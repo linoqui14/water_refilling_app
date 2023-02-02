@@ -11,7 +11,9 @@ class OrderType{
 class OrderStatus{
   static const ACCEPTED = "ACCEPTED";
   static const PENDING = "PENDING";
+  static const DELIVERING = "DELIVERING";
   static const DELIVERED = "DELIVERED";
+  static const COMPLETE = "COMPLETE";
 }
 
 class PaymentType{
@@ -22,7 +24,7 @@ class PaymentType{
 
 
 class OrderDetails extends Controller{
-  String orderType,paymentType,userID,status;
+  String orderType,paymentType,userID,status,stationID;
   int totalPrice,totalItems;
 
   OrderDetails(
@@ -32,7 +34,8 @@ class OrderDetails extends Controller{
         required this.userID,
         required this.totalItems,
         required this.totalPrice,
-        required this.status
+        required this.status,
+        required this.stationID
       }):super(collectionName: 'orders',id: Controller.genID(11));
 
   @override
@@ -44,6 +47,8 @@ class OrderDetails extends Controller{
       'userID':userID,
       'totalItems':totalItems,
       'totalPrice':totalPrice,
+      'status':status,
+      'stationID':stationID,
     };
   }
 
@@ -55,6 +60,7 @@ class OrderDetails extends Controller{
       totalItems: object['totalItems'],
       totalPrice: object['totalPrice'],
       status: object['status'],
+      stationID: object['stationID'],
     );
     order.id = object['id'];
     return order;

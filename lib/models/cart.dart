@@ -6,10 +6,10 @@
 import 'package:water_refilling_app/models/controller.dart';
 
 class CartItem extends Controller{
-  String userID,productID,status,orderID;
+  String userID,productID,status,orderID,stationID;
   int totalCartItemQuantity,totalCartItemValue;
 
-  CartItem({required this.userID,required this.productID,required this.status,this.totalCartItemQuantity = 0,this.totalCartItemValue = 0,this.orderID=""}):super(collectionName: 'cart_items',id: Controller.genID(11));
+  CartItem({required this.userID,required this.productID,required this.status,this.totalCartItemQuantity = 0,this.totalCartItemValue = 0,this.orderID="",required this.stationID}):super(collectionName: 'cart_items',id: Controller.genID(11));
 
   @override
   Map<String, dynamic> toJson() {
@@ -20,7 +20,9 @@ class CartItem extends Controller{
       'status':status,
       'totalCartItemQuantity':totalCartItemQuantity,
       'totalCartItemValue':totalCartItemValue,
-      'orderID':orderID
+      'orderID':orderID,
+      'stationID':stationID,
+
     };
   }
   static CartItem toObject({required Map<String, dynamic> object}){
@@ -31,6 +33,7 @@ class CartItem extends Controller{
       totalCartItemQuantity: object['totalCartItemQuantity'],
       totalCartItemValue: object['totalCartItemValue'],
       orderID: object['orderID'],
+      stationID: object['stationID'],
     );
     cart.id = object['id'];
     return cart;

@@ -264,7 +264,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                         thickness: 10, //width of scrollbar
                                         radius: Radius.circular(20),
-                                        thumbVisibility: true, //always show scrollbar
+                                        // thumbVisibility: true, //always show scrollbar
                                         child: SingleChildScrollView(
                                           child: Column(
                                             mainAxisAlignment: MainAxisAlignment.start,
@@ -943,6 +943,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                   builder:  (context,snapshot){
                                                     if(!snapshot.hasData)return Center();
                                                     if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                    List<CartItem> carts = [];
+                                                    for(var query in snapshot.data!.docs){
+                                                      CartItem cart = CartItem.toObject(object: query.data());
+                                                      if(cart.status!='oncart')continue;
+                                                      carts.add(cart);
+                                                      // print(query.data());
+                                                    }
                                                     return Row(
                                                       crossAxisAlignment: CrossAxisAlignment.center,
                                                       mainAxisAlignment: MainAxisAlignment.center,
@@ -950,7 +957,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                         Text("Total Items:",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,)),
                                                         Padding(
                                                           padding: const EdgeInsets.only(top: 8),
-                                                          child: Text(snapshot.data!.docs.length.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.blue ,)),
+                                                          child: Text(carts.length.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.blue ,)),
                                                         ),
                                                       ],
                                                     );
@@ -990,11 +997,24 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                             List<CartItem> carts = [];
                                             for(var query in snapshot.data!.docs){
                                               CartItem cart = CartItem.toObject(object: query.data());
-                                              if(cart.status!='oncart')break;
+                                              if(cart.status!='oncart')continue;
                                               carts.add(cart);
                                               // print(query.data());
                                             }
-
+                                            if(carts.isEmpty){
+                                              return Container(
+                                                  alignment: Alignment.center,
+                                                  child:SingleChildScrollView(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        lot.Lottie.network("https://assets2.lottiefiles.com/packages/lf20_qh5z2fdq.json",width: 200),
+                                                        Text("You don't have item on your cart!",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                                      ],
+                                                    ),
+                                                  )
+                                              );
+                                            }
                                             return ListView(
                                               children: carts.map((cart){
                                                 return StreamBuilder(
@@ -1003,111 +1023,174 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                       if(!snapshot.hasData)return Center();
                                                       if(snapshot.connectionState==ConnectionState.waiting)return Center();
                                                       Product product = Product.toObject(object: snapshot.data!.docs.first.data());
-                                                      return Container(
-                                                        alignment: Alignment.centerLeft,
-                                                        margin: EdgeInsets.only(top: 10),
-                                                        padding: EdgeInsets.only(left: 0,right: 0,top: 15,bottom: 0),
-                                                        height: 165,
-                                                        width: double.infinity,
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius: BorderRadius.all(Radius.circular(15)),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.withOpacity(0.09),
-                                                              spreadRadius: 3,
-                                                              blurRadius: 6,
-                                                              offset: Offset(1, 3), // changes position of shadow
+                                                      return Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Padding(
+                                                            padding:EdgeInsets.only(bottom: 2,top: 10,),
+                                                            child: StreamBuilder(
+                                                                stream: Controller.getCollectionStreamWhere(collectionName: 'stations', field: 'id', value: product.stationID),
+                                                                builder: (context, snapshot) {
+                                                                  if(!snapshot.hasData)return Center();
+                                                                  if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                                  if(snapshot.data!.docs.isEmpty)return Center();
+                                                                  Station station = Station.toObject(object: snapshot.data!.docs.first.data());
+                                                                  return Text(station.name,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 12,height: 1,color: Colors.grey ,),);
+                                                                }
                                                             ),
-                                                          ],
-                                                        ),
+                                                          ),
+                                                          Container(
+                                                            alignment: Alignment.centerLeft,
 
-                                                        child: Column(
-                                                          children: [
-                                                            Row(
-                                                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                            padding: EdgeInsets.only(left: 0,right: 0,top: 15,bottom: 0),
+                                                            height: 165,
+                                                            width: double.infinity,
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.white,
+                                                              borderRadius: BorderRadius.only(bottomRight:Radius.circular(15),bottomLeft: Radius.circular(15),topRight: Radius.circular(15)),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors.grey.withOpacity(0.09),
+                                                                  spreadRadius: 3,
+                                                                  blurRadius: 6,
+                                                                  offset: Offset(1, 3), // changes position of shadow
+                                                                ),
+                                                              ],
+                                                            ),
+
+                                                            child: Column(
                                                               children: [
                                                                 Row(
+                                                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                                   children: [
-                                                                    Image.network(product.imgURL,width: 50,fit: BoxFit.fitHeight,),
-                                                                    Column(
-                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                    Row(
                                                                       children: [
-                                                                        Text(product.name,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w200,fontSize: 12,height: 1,color: Colors.blue ,),),
-                                                                        SizedBox(
-                                                                            width: 150,
-                                                                            height: 20,
-                                                                            child: Text(product.description,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 10,height: 1,color: Colors.grey ,),maxLines: 3,)
-                                                                        ),
-                                                                        Padding(padding: EdgeInsets.only(top: 13)),
-                                                                        Text("Php.${product.price}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.orange ,),),
-                                                                        StreamBuilder(
-                                                                            stream: Controller.getCollectionStreamWhere(collectionName: 'stocks', field: 'id', value: product.stockID),
-                                                                            builder: (context, snapshot) {
-                                                                              if(!snapshot.hasData)return Center();
-                                                                              if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                                                              Stock stock = Stock.toObject(object: snapshot.data!.docs.first.data());
-                                                                              return Text("Stocks Left: ${stock.stock}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),);
-                                                                            }
+                                                                        Image.network(product.imgURL,width: 50,fit: BoxFit.fitHeight,),
+                                                                        Column(
+                                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                                          children: [
+                                                                            Text(product.name,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w200,fontSize: 12,height: 1,color: Colors.blue ,),),
+                                                                            SizedBox(
+                                                                                width: 150,
+                                                                                height: 20,
+                                                                                child: Text(product.description,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 10,height: 1,color: Colors.grey ,),maxLines: 3,)
+                                                                            ),
+                                                                            Padding(padding: EdgeInsets.only(top: 13)),
+                                                                            Text("Php.${product.price}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.orange ,),),
+                                                                            StreamBuilder(
+                                                                                stream: Controller.getCollectionStreamWhere(collectionName: 'stocks', field: 'id', value: product.stockID),
+                                                                                builder: (context, snapshot) {
+                                                                                  if(!snapshot.hasData)return Center();
+                                                                                  if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                                                  Stock stock = Stock.toObject(object: snapshot.data!.docs.first.data());
+                                                                                  return Text("Stocks Left: ${stock.stock}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),);
+                                                                                }
+                                                                            )
+                                                                          ],
                                                                         )
+
                                                                       ],
+                                                                    ),
+                                                                    GestureDetector(
+                                                                      onTap: (){
+                                                                        Controller.getCollection(collectionName: 'cart_items').then((value) {
+                                                                          value.doc(cart.id).delete().then((value) {
+                                                                            setState(() {
+
+                                                                            });
+                                                                            Fluttertoast.showToast(
+                                                                                msg: "Item successfully remove to your cart!",
+                                                                                toastLength: Toast.LENGTH_SHORT,
+                                                                                gravity: ToastGravity.CENTER,
+                                                                                timeInSecForIosWeb: 1,
+                                                                                backgroundColor: Colors.blue,
+                                                                                textColor: Colors.white,
+                                                                                fontSize: 12
+                                                                            );
+                                                                          });
+                                                                        });
+                                                                      },
+                                                                      child: Column(
+                                                                        mainAxisAlignment: MainAxisAlignment.start,
+                                                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                                                        children: [
+                                                                          Icon(Icons.close,color: Colors.grey,)
+                                                                        ],
+                                                                      ),
                                                                     )
 
                                                                   ],
                                                                 ),
-                                                                GestureDetector(
-                                                                  onTap: (){
-                                                                    Controller.getCollection(collectionName: 'cart_items').then((value) {
-                                                                      value.doc(cart.id).delete().then((value) {
-                                                                        setState(() {
-
-                                                                        });
-                                                                        Fluttertoast.showToast(
-                                                                            msg: "Item successfully remove to your cart!",
-                                                                            toastLength: Toast.LENGTH_SHORT,
-                                                                            gravity: ToastGravity.CENTER,
-                                                                            timeInSecForIosWeb: 1,
-                                                                            backgroundColor: Colors.blue,
-                                                                            textColor: Colors.white,
-                                                                            fontSize: 12
-                                                                        );
-                                                                      });
-                                                                    });
-                                                                  },
-                                                                  child: Column(
-                                                                    mainAxisAlignment: MainAxisAlignment.start,
-                                                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                                                    children: [
-                                                                      Icon(Icons.close,color: Colors.grey,)
-                                                                    ],
-                                                                  ),
-                                                                )
-
-                                                              ],
-                                                            ),
-                                                            Divider(),
-                                                            Row(
-                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                              children: [
+                                                                Divider(),
                                                                 Row(
+                                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                                   children: [
-                                                                    IconButton(
-                                                                        onPressed: (){
+                                                                    Row(
+                                                                      children: [
+                                                                        IconButton(
+                                                                            onPressed: (){
 
-                                                                          if(cart.totalCartItemQuantity>0){
-                                                                            cart.totalCartItemQuantity--;
-                                                                            cart.totalCartItemValue = cart.totalCartItemQuantity*product.price;
-                                                                            cart.upsert();
-                                                                          }
+                                                                              if(cart.totalCartItemQuantity>0){
+                                                                                cart.totalCartItemQuantity--;
+                                                                                cart.totalCartItemValue = cart.totalCartItemQuantity*product.price;
+                                                                                cart.upsert();
+                                                                              }
 
-                                                                        },
-                                                                        icon: Icon(Icons.remove)
+                                                                            },
+                                                                            icon: Icon(Icons.remove)
+                                                                        ),
+                                                                        Container(
+                                                                          alignment: Alignment.center,
+                                                                          height: 30,
+                                                                          width: 30,
+                                                                          decoration: BoxDecoration(
+                                                                            color: Colors.white,
+                                                                            borderRadius: BorderRadius.all(Radius.circular(20)),
+                                                                            boxShadow: [
+                                                                              BoxShadow(
+                                                                                color: Colors.grey.withOpacity(0.09),
+                                                                                spreadRadius: 3,
+                                                                                blurRadius: 6,
+                                                                                offset: Offset(1, 3), // changes position of shadow
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                          child: StreamBuilder(
+                                                                              stream: Controller.getCollectionStreamWhere(collectionName: 'cart_items', field: 'id', value: cart.id),
+                                                                              builder: (context, snapshot) {
+                                                                                if(!snapshot.hasData)return Center();
+                                                                                if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                                                if(snapshot.data!.docs.isEmpty)return Center();
+                                                                                CartItem thisCart = CartItem.toObject(object: snapshot.data!.docs.first.data());
+                                                                                return Text(thisCart.totalCartItemQuantity.toString());
+                                                                              }
+                                                                          ),
+                                                                        ),
+                                                                        IconButton(
+                                                                            onPressed: (){
+                                                                              Controller.getCollectionWhere(collectionName: 'stocks', field: 'id', value: product.stockID).then((value) {
+
+                                                                                Stock stock = Stock.toObject(object: value.docs.first.data());
+                                                                                if(cart.totalCartItemQuantity<stock.stock){
+                                                                                  cart.totalCartItemQuantity++;
+                                                                                  cart.totalCartItemValue = cart.totalCartItemQuantity*product.price;
+                                                                                  cart.upsert();
+                                                                                }
+                                                                              });
+
+                                                                            },
+                                                                            icon: Icon(Icons.add)
+                                                                        ),
+                                                                      ],
                                                                     ),
+
+                                                                    Text("="),
                                                                     Container(
+                                                                      margin: EdgeInsets.only(right: 10),
                                                                       alignment: Alignment.center,
                                                                       height: 30,
-                                                                      width: 30,
+                                                                      width: 100,
                                                                       decoration: BoxDecoration(
                                                                         color: Colors.white,
                                                                         borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -1127,63 +1210,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                             if(snapshot.connectionState==ConnectionState.waiting)return Center();
                                                                             if(snapshot.data!.docs.isEmpty)return Center();
                                                                             CartItem thisCart = CartItem.toObject(object: snapshot.data!.docs.first.data());
-                                                                            return Text(thisCart.totalCartItemQuantity.toString());
+                                                                            return Text(thisCart.totalCartItemValue.toString());
                                                                           }
                                                                       ),
                                                                     ),
-                                                                    IconButton(
-                                                                        onPressed: (){
-                                                                          Controller.getCollectionWhere(collectionName: 'stocks', field: 'id', value: product.stockID).then((value) {
 
-                                                                            Stock stock = Stock.toObject(object: value.docs.first.data());
-                                                                            if(cart.totalCartItemQuantity<stock.stock){
-                                                                              cart.totalCartItemQuantity++;
-                                                                              cart.totalCartItemValue = cart.totalCartItemQuantity*product.price;
-                                                                              cart.upsert();
-                                                                            }
-                                                                          });
-
-                                                                        },
-                                                                        icon: Icon(Icons.add)
-                                                                    ),
                                                                   ],
-                                                                ),
-
-                                                                Text("="),
-                                                                Container(
-                                                                  margin: EdgeInsets.only(right: 10),
-                                                                  alignment: Alignment.center,
-                                                                  height: 30,
-                                                                  width: 100,
-                                                                  decoration: BoxDecoration(
-                                                                    color: Colors.white,
-                                                                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                                    boxShadow: [
-                                                                      BoxShadow(
-                                                                        color: Colors.grey.withOpacity(0.09),
-                                                                        spreadRadius: 3,
-                                                                        blurRadius: 6,
-                                                                        offset: Offset(1, 3), // changes position of shadow
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                  child: StreamBuilder(
-                                                                      stream: Controller.getCollectionStreamWhere(collectionName: 'cart_items', field: 'id', value: cart.id),
-                                                                      builder: (context, snapshot) {
-                                                                        if(!snapshot.hasData)return Center();
-                                                                        if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                                                        if(snapshot.data!.docs.isEmpty)return Center();
-                                                                        CartItem thisCart = CartItem.toObject(object: snapshot.data!.docs.first.data());
-                                                                        return Text(thisCart.totalCartItemValue.toString());
-                                                                      }
-                                                                  ),
-                                                                ),
+                                                                )
 
                                                               ],
-                                                            )
-
-                                                          ],
-                                                        ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       );
                                                     });
                                               }).toList(),
@@ -1196,139 +1234,167 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                             color:  Color(0xffF5F5F5),
                                             width: Tools.getDeviceWidth(context),
                                             height: 130,
-                                            child: Builder(
-                                                builder: (context) {
-                                                  int totalValue = 0;
-                                                  bool isPickup = false;
-                                                  bool isCOD = false;
-                                                  TextEditingController totalPrice = TextEditingController(text: "0");
-                                                  String orderType = "";
-                                                  String paymentType = "";
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(top:8.0),
+                                              child: Builder(
+                                                  builder: (context) {
+                                                    int totalValue = 0;
+                                                    bool isPickup = false;
+                                                    bool isCOD = false;
+                                                    TextEditingController totalPrice = TextEditingController(text: "0");
+                                                    String orderType = "";
+                                                    String paymentType = "";
 
-                                                  return StatefulBuilder(
-                                                      builder: (context,updateCart) {
-                                                        // _updateCart = updateCart;
-                                                        return Column(
-                                                          children: [
-                                                            Row(
-                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                              children: [
-                                                                Expanded(
-                                                                  child: Column(
-                                                                    children: [
-                                                                      Text("Order Type",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,)),
-                                                                      CustomTextButton(
-                                                                        width: double.infinity,
-                                                                        color: isPickup?Colors.blue:Colors.orange,
-                                                                        text: isPickup?"Pickup":"Delivery",
-                                                                        onPressed: (){
-                                                                          updateCart((){
-                                                                            isPickup = isPickup?false:true;
-                                                                            if(isPickup)isCOD=false;
-                                                                          });
-                                                                        },
-                                                                      )
-                                                                    ],
+                                                    return StatefulBuilder(
+                                                        builder: (context,updateCart) {
+                                                          // _updateCart = updateCart;
+                                                          return Column(
+                                                            children: [
+                                                              Row(
+                                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                children: [
+                                                                  Expanded(
+                                                                    child: Column(
+                                                                      children: [
+                                                                        Text("Order Type",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,)),
+                                                                        CustomTextButton(
+                                                                          width: double.infinity,
+                                                                          color: isPickup?Colors.blue:Colors.orange,
+                                                                          text: isPickup?"Pickup":"Delivery",
+                                                                          onPressed: (){
+                                                                            updateCart((){
+                                                                              isPickup = isPickup?false:true;
+                                                                              if(isPickup)isCOD=false;
+                                                                            });
+                                                                          },
+                                                                        )
+                                                                      ],
+                                                                    ),
                                                                   ),
-                                                                ),
-                                                                Padding(padding: EdgeInsets.symmetric(horizontal: 20)),
-                                                                Expanded(
-                                                                  child: Column(
-                                                                    children: [
-                                                                      Text("Payment Type",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,)),
-                                                                      CustomTextButton(
-                                                                        width: double.infinity,
-                                                                        color: isCOD?Colors.blue:Colors.orange,
-                                                                        text: isCOD?"COD":"At Station",
-                                                                        onPressed: isPickup?null:(){
-                                                                          updateCart((){
-                                                                            isCOD = isCOD?false:true;
-                                                                          });
-                                                                        },
-                                                                      )
-                                                                    ],
-                                                                  ),
-                                                                )
-                                                              ],
-                                                            ),
-                                                            StreamBuilder(
-                                                                stream: Controller.getCollectionStreamWhere(collectionName: 'cart_items', field: 'userID', value: widget.user.id),
-                                                                builder: (context, snapshot) {
-                                                                  if(!snapshot.hasData)return Center();
-                                                                  if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                                                  List<CartItem> cartItems = [];
-                                                                  int _totalPrice = 0;
-                                                                  for(var query in snapshot.data!.docs){
-                                                                    CartItem cartItem = CartItem.toObject(object: query.data());
-                                                                    cartItems.add(cartItem);
-                                                                    _totalPrice+=cartItem.totalCartItemValue;
-                                                                  }
-                                                                  totalPrice.text = _totalPrice.toString();
-                                                                  return CustomTextField(
-                                                                    color: Colors.orange,
-                                                                    enableFloat: true,
-                                                                    readonly: true,
-                                                                    hint: 'Total Price',
-                                                                    controller: totalPrice,
-                                                                    suffix: CustomTextButton(
-                                                                      icon: Icon(Icons.shopping_cart_checkout_outlined,color:Colors.white),
-                                                                      style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.white ,),
+                                                                  Padding(padding: EdgeInsets.symmetric(horizontal: 20)),
+                                                                  Expanded(
+                                                                    child: Column(
+                                                                      children: [
+                                                                        Text("Payment Type",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,)),
+                                                                        CustomTextButton(
+                                                                          width: double.infinity,
+                                                                          color: isCOD?Colors.blue:Colors.orange,
+                                                                          text: isCOD?"COD":"At Station",
+                                                                          onPressed: isPickup?null:(){
+                                                                            updateCart((){
+                                                                              isCOD = isCOD?false:true;
+                                                                            });
+                                                                          },
+                                                                        )
+                                                                      ],
+                                                                    ),
+                                                                  )
+                                                                ],
+                                                              ),
+                                                              StreamBuilder(
+                                                                  stream: Controller.getCollectionStreamWhere(collectionName: 'cart_items', field: 'userID', value: widget.user.id),
+                                                                  builder: (context, snapshot) {
+                                                                    if(!snapshot.hasData)return Center();
+                                                                    if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                                    List<CartItem> cartItems = [];
+                                                                    int _totalPrice = 0;
+
+                                                                    for(var query in snapshot.data!.docs){
+                                                                      CartItem cartItem = CartItem.toObject(object: query.data());
+                                                                      if(cartItem.status!='oncart')continue;
+                                                                      cartItems.add(cartItem);
+                                                                      _totalPrice+=cartItem.totalCartItemValue;
+                                                                    }
+                                                                    totalPrice.text = _totalPrice.toString();
+                                                                    return CustomTextField(
                                                                       color: Colors.orange,
-                                                                      rTopLeft: 0,
-                                                                      rBottomLeft: 0,
-                                                                      height: 50,
-                                                                      width: 130,
-                                                                      text: "Checkout",
-                                                                      onPressed: (){
-                                                                        if(cartItems.isEmpty)return;
-                                                                        OrderDetails order = OrderDetails(orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: cartItems.length, totalPrice: totalValue, status: OrderStatus.PENDING,);
-                                                                        bool isValid = true;
-                                                                        cartItems.forEach((cart) {
-                                                                          if(cart.totalCartItemQuantity<=0){
-                                                                            isValid = false;
+                                                                      enableFloat: true,
+                                                                      readonly: true,
+                                                                      hint: 'Total Price',
+                                                                      controller: totalPrice,
+                                                                      suffix: CustomTextButton(
+                                                                        icon: Icon(Icons.shopping_cart_checkout_outlined,color:Colors.white),
+                                                                        style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 15,height: 1,color: Colors.white ,),
+                                                                        color: Colors.orange,
+                                                                        rTopLeft: 0,
+                                                                        rBottomLeft: 0,
+                                                                        height: 50,
+                                                                        width: 130,
+                                                                        text: "Checkout",
+                                                                        onPressed: (){
+                                                                          if(cartItems.isEmpty)return;
+
+                                                                          bool isValid = true;
+                                                                          List<String> stations = [];
+                                                                          for (var cart in cartItems) {
+                                                                            if(cart.totalCartItemQuantity<=0){
+                                                                              isValid = false;
+                                                                              Fluttertoast.showToast(
+                                                                                  msg: "Invalid order!",
+                                                                                  toastLength: Toast.LENGTH_SHORT,
+                                                                                  gravity: ToastGravity.CENTER,
+                                                                                  timeInSecForIosWeb: 1,
+                                                                                  backgroundColor: Colors.orange,
+                                                                                  textColor: Colors.white,
+                                                                                  fontSize: 12
+                                                                              );
+                                                                              continue;
+                                                                            }
+                                                                            if(!stations.contains(cart.stationID)){
+                                                                              stations.add(cart.stationID);
+                                                                            }
+
+
+
+                                                                          }
+
+                                                                          if(isValid){
+                                                                            for(var station in stations){
+                                                                              OrderDetails order = OrderDetails(stationID: station,orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: 0, totalPrice: 0, status: OrderStatus.PENDING,);
+                                                                              int items = 0;
+                                                                              int totalValue = 0;
+                                                                              for(var cart in cartItems.where((element) => element.stationID==station)){
+                                                                                cart.status = 'checkout';
+                                                                                cart.orderID = order.id;
+                                                                                print(cart.stationID);
+                                                                                cart.upsert();
+                                                                                // print(cart.id);
+                                                                                items+=cart.totalCartItemQuantity;
+                                                                                totalValue+=cart.totalCartItemValue;
+                                                                              }
+                                                                              // print(items);
+                                                                              order.totalItems = items;
+                                                                              order.totalPrice = totalValue;
+                                                                              order.upsert();
+
+                                                                            }
                                                                             Fluttertoast.showToast(
-                                                                                msg: "Invalid order!",
+                                                                                msg: "Order successfully placed!",
                                                                                 toastLength: Toast.LENGTH_SHORT,
                                                                                 gravity: ToastGravity.CENTER,
                                                                                 timeInSecForIosWeb: 1,
-                                                                                backgroundColor: Colors.orange,
+                                                                                backgroundColor: Colors.blue,
                                                                                 textColor: Colors.white,
                                                                                 fontSize: 12
                                                                             );
-                                                                            return;
+                                                                            setState(() {
+
+                                                                            });
                                                                           }
-                                                                          cart.status = 'checkout';
-                                                                          cart.orderID = order.id;
-                                                                          cart.upsert();
-                                                                        });
-                                                                        if(isValid){
-                                                                          order.upsert();
-                                                                          Fluttertoast.showToast(
-                                                                              msg: "Order successfully placed!",
-                                                                              toastLength: Toast.LENGTH_SHORT,
-                                                                              gravity: ToastGravity.CENTER,
-                                                                              timeInSecForIosWeb: 1,
-                                                                              backgroundColor: Colors.blue,
-                                                                              textColor: Colors.white,
-                                                                              fontSize: 12
-                                                                          );
-                                                                          setState(() {
 
-                                                                          });
-                                                                        }
-
-                                                                      },
-                                                                    ),
+                                                                        },
+                                                                      ),
 
 
-                                                                  );
-                                                                }
-                                                            ),
-                                                          ],
-                                                        );
-                                                      }
-                                                  );
-                                                }
+                                                                    );
+                                                                  }
+                                                              ),
+                                                            ],
+                                                          );
+                                                        }
+                                                    );
+                                                  }
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1348,59 +1414,342 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text("Select",style: GoogleFonts.quicksand(fontWeight: FontWeight.w100,fontSize: 25),),
-                                    Text("Station",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
+                                    Text("Your",style: GoogleFonts.quicksand(fontWeight: FontWeight.w100,fontSize: 25),),
+                                    Text("Orders",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                width: Tools.getDeviceWidth(context),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: CustomTextField(
+                              SingleChildScrollView(
+                                child: StreamBuilder(
+                                    stream: Controller.getCollectionStreamWhere(collectionName: 'orders', field: 'userID', value: widget.user.id),
+                                    builder: (context, snapshot) {
+                                      if(!snapshot.hasData)return Center();
+                                      if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                      if(snapshot.data!.docs.isEmpty)return Center();
+                                      List<OrderDetails> orderDetails = [];
+                                      for(var query in snapshot.data!.docs){
+                                        OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                        orderDetails.add(orderDetail);
+                                        // print(query.data());
+                                      }
 
-                                        icon: Ionicons.search,
-                                        filled: true,
-                                        filledColor: Color(0xffC3EBFF).withAlpha(50),
-                                        padding: EdgeInsets.zero,
-                                        rAll: 15,
-                                        borderWidth: 0,
-                                        hint: 'Search Station',
-                                        controller: search,
-                                        color: Colors.blue,
+                                      return Container(
+                                        height: Tools.getDeviceHeight(context)*.635,
+                                        padding: EdgeInsets.all(10),
+                                        width: Tools.getDeviceWidth(context),
+                                        child: ListView(
+                                          children: orderDetails.map((order) {
+                                            return Container(
+                                              alignment: Alignment.topCenter,
+                                              margin: EdgeInsets.all(10),
+                                              padding: EdgeInsets.all(10),
+                                              width: double.infinity,
+                                              height: 460,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.all(Radius.circular(15)),
+                                                color: Colors.white,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.grey.withOpacity(0.09),
+                                                    spreadRadius: 3,
+                                                    blurRadius: 6,
+                                                    offset: Offset(1, 3), // changes position of shadow
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  StreamBuilder(
+                                                      stream: Controller.getCollectionStreamWhere(collectionName: 'stations', field: 'id', value: order.stationID),
+                                                      builder: (context, snapshot) {
+                                                        if(!snapshot.hasData)return Center();
+                                                        if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                        if(snapshot.data!.docs.isEmpty)return Center();
+                                                        Station station = Station.toObject(object: snapshot.data!.docs.first.data());
+                                                        return Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                          children: [
+                                                            Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                Text("Station",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,color: Colors.grey ,),),
+                                                                Text(station.name,style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 20,height: 1,color: Colors.blue ,),),
+                                                              ],
+                                                            ),
+                                                            Column(
 
-                                      ),
-                                    ),
-                                    Padding(padding: EdgeInsets.only(left: 10)),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withOpacity(0.09),
-                                              spreadRadius: 3,
-                                              blurRadius: 6,
-                                              offset: Offset(1, 3), // changes position of shadow
-                                            ),
-                                          ],
-                                          color: Colors.white,
-                                          // shape: BoxShape.circle,
-                                          borderRadius: BorderRadius.all(Radius.circular(13))
+                                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                                              children: [
+                                                                Text("Total Items",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,color: Colors.grey ,),),
+                                                                Text(order.totalItems.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 13,height: 1,color: Colors.grey ,),),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        );
+                                                      }
+                                                  ),
+                                                  Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 20),
+                                                    height: 60,
+                                                    width: double.infinity,
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.grey.withAlpha(20),
+                                                        borderRadius: BorderRadius.all(Radius.circular(50))
 
-                                      ),
-                                      child: CustomTextButton(
-                                        style: GoogleFonts.quicksand(fontWeight: FontWeight.bold,fontSize: 12,color: Colors.black87),
-                                        color: Colors.white,
-                                        rAll: 18,
-                                        padding: EdgeInsets.zero,
-                                        width: 20,
-                                        height: 20,
-                                        text: "Go",
-                                      ),
-                                    )
-                                  ],
+                                                    ),
+
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Stack(
+                                                          alignment: Alignment.center,
+                                                          children: [
+                                                            Padding(
+                                                              padding: const EdgeInsets.only(bottom: 12 ,left: 10,right: 12),
+                                                              child: Divider(thickness: 2,color: Colors.blue,),
+                                                            ),
+                                                            Row(
+                                                              children: [
+                                                                Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: EdgeInsets.all(5),
+                                                                      height:order.status==OrderStatus.PENDING?30:15,
+                                                                      width: order.status==OrderStatus.PENDING?30:15,
+                                                                      decoration: BoxDecoration(
+                                                                          color: Colors.blue,
+                                                                          shape: BoxShape.circle
+                                                                      ),
+                                                                      child: Container(
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.white,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+
+                                                                      ),
+                                                                    ),
+                                                                    Text("Pending",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                  ],
+                                                                ),
+                                                                Expanded(child: Column(
+                                                                  children: [
+                                                                    Divider(thickness: 3,color: Colors.transparent,),
+                                                                    Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                  ],
+                                                                )),
+                                                                Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: EdgeInsets.all(5),
+                                                                      height:order.status==OrderStatus.ACCEPTED?30:15,
+                                                                      width: order.status==OrderStatus.ACCEPTED?30:15,
+                                                                      decoration: BoxDecoration(
+                                                                          color: Colors.blue,
+                                                                          shape: BoxShape.circle
+                                                                      ),
+                                                                      child: Container(
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.white,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+
+                                                                      ),
+                                                                    ),
+                                                                    Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                  ],
+                                                                ),
+                                                                Expanded(child: Column(
+                                                                  children: [
+                                                                    Divider(thickness: 3,color: Colors.transparent,),
+                                                                    Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                  ],
+                                                                )),
+                                                                Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: EdgeInsets.all(5),
+                                                                      height:order.status==OrderStatus.DELIVERING?30:15,
+                                                                      width: order.status==OrderStatus.DELIVERING?30:15,
+                                                                      decoration: BoxDecoration(
+                                                                          color: Colors.blue,
+                                                                          shape: BoxShape.circle
+                                                                      ),
+                                                                      child: Container(
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.white,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+
+                                                                      ),
+                                                                    ),
+                                                                    Text("Delivering",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                  ],
+                                                                ),
+                                                                Expanded(child: Column(
+                                                                  children: [
+                                                                    Divider(thickness: 3,color: Colors.transparent,),
+                                                                    Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                  ],
+                                                                )),
+                                                                Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: EdgeInsets.all(5),
+                                                                      height:order.status==OrderStatus.DELIVERED?30:15,
+                                                                      width: order.status==OrderStatus.DELIVERED?30:15,
+                                                                      decoration: BoxDecoration(
+                                                                          color: Colors.blue,
+                                                                          shape: BoxShape.circle
+                                                                      ),
+                                                                      child: Container(
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.white,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+
+                                                                      ),
+                                                                    ),
+                                                                    Text("Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                  ],
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        // Row(
+                                                        //   children: [
+                                                        //     Text("Pending",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                        //     Expanded(child: Divider(thickness: 3,color: Colors.blue,)),
+                                                        //     Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                        //     Expanded(child: Divider(thickness: 3,color: Colors.blue,)),
+                                                        //     Text("Delivering",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                        //     Expanded(child: Divider(thickness: 3,color: Colors.blue,)),
+                                                        //     Text("Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                        //   ],
+                                                        // ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  StreamBuilder(
+                                                      stream: Controller.getCollectionStreamWhere(collectionName: 'cart_items', field: 'orderID', value: order.id),
+                                                      builder: (context, snapshot) {
+                                                        if(!snapshot.hasData)return Center();
+                                                        if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                        if(snapshot.data!.docs.isEmpty)return Center();
+                                                        List<CartItem> items = [];
+                                                        for(var query in snapshot.data!.docs){
+                                                          CartItem item = CartItem.toObject(object: query.data());
+                                                          if(item.status!='checkout')continue;
+                                                          items.add(item);
+                                                          // print(query.data());
+                                                        }
+                                                        return Container(
+                                                          // padding: EdgeInsets.all(10),
+                                                          margin: EdgeInsets.only(top: 10),
+                                                          width: double.infinity,
+                                                          height: 290,
+
+                                                          child: ClipRRect(
+                                                            borderRadius: BorderRadius.all(Radius.circular(20)),
+                                                            child: Container(
+                                                              color: Color(0xffF3F3F3),
+                                                              child: Scrollbar(
+                                                                child: ListView(
+                                                                  children: items.map((item){
+                                                                    return StreamBuilder(
+                                                                        stream: Controller.getCollectionStreamWhere(collectionName: 'products', field: 'id', value: item.productID),
+                                                                        builder: (context,snapshot){
+                                                                          if(!snapshot.hasData)return Center();
+                                                                          if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                                          Product product = Product.toObject(object: snapshot.data!.docs.first.data());
+                                                                          return Column(
+                                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                                            children: [
+                                                                              Container(
+                                                                                margin: EdgeInsets.symmetric(horizontal: 5,vertical: 5),
+                                                                                alignment: Alignment.centerLeft,
+                                                                                padding: EdgeInsets.only(left: 5,right: 10,top: 15,bottom: 0),
+                                                                                height: 70,
+                                                                                width: double.infinity,
+                                                                                decoration: BoxDecoration(
+                                                                                  color: Colors.white,
+                                                                                  borderRadius: BorderRadius.all(Radius.circular(15)),
+                                                                                  boxShadow: [
+                                                                                    BoxShadow(
+                                                                                      color: Colors.grey.withOpacity(0.09),
+                                                                                      spreadRadius: 3,
+                                                                                      blurRadius: 6,
+                                                                                      offset: Offset(1, 3), // changes position of shadow
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+
+                                                                                child: Column(
+                                                                                  children: [
+                                                                                    Row(
+                                                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                      children: [
+                                                                                        SizedBox(
+                                                                                            width:40,
+                                                                                            child: Image.network(product.imgURL,height: 35,fit: BoxFit.fitHeight,)
+                                                                                        ),
+                                                                                        Column(
+                                                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                          children: [
+                                                                                            Text(product.name,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w200,fontSize: 12,height: 1,color: Colors.blue ,),),
+                                                                                            SizedBox(
+                                                                                                width: 150,
+                                                                                                height: 20,
+                                                                                                child: Text(product.description,style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 10,height: 1,color: Colors.grey ,),maxLines: 3,)
+                                                                                            ),
+                                                                                            Padding(padding: EdgeInsets.only(top: 13)),
+
+                                                                                          ],
+                                                                                        ),
+                                                                                        Column(
+                                                                                          children: [
+                                                                                            // Text("Total Price",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,height: 1,color: Colors.grey ,),),
+                                                                                            Text("Php.${item.totalCartItemValue}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 12,height: 1,color: Colors.orange ,),),
+                                                                                            Text("Quantity: ${item.totalCartItemQuantity}",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 10,height: 1,color: Colors.grey ,),)
+                                                                                          ],
+                                                                                        )
+                                                                                      ],
+                                                                                    ),
+
+                                                                                  ],
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          );
+                                                                        });
+                                                                  }).toList(),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                  ),
+                                                  Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Text("Total Price",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 18,color: Colors.grey ,)),
+                                                      Text("Php."+order.totalPrice.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 18,color: Colors.orange ,)),
+                                                    ],
+                                                  )
+
+
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      );
+                                    }
                                 ),
                               )
                             ],

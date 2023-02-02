@@ -291,7 +291,7 @@ class _StationPageState extends State<StationPage>{
                                                       textColor: Colors.white,
                                                       fontSize: 12
                                                   );
-                                                  CartItem cart = CartItem(userID: widget.user.id, productID: product.id, status: 'oncart');
+                                                  CartItem cart = CartItem(userID: widget.user.id, productID: product.id, status: 'oncart', stationID: widget.station.id);
                                                   cart.upsert();
                                                   return;
                                                 }
@@ -319,7 +319,7 @@ class _StationPageState extends State<StationPage>{
                                                     textColor: Colors.white,
                                                     fontSize: 12
                                                 );
-                                                CartItem cart = CartItem(userID: widget.user.id, productID: product.id,status: 'oncart');
+                                                CartItem cart = CartItem(userID: widget.user.id, productID: product.id,status: 'oncart',stationID: widget.station.id);
                                                 cart.upsert();
 
                                               });
