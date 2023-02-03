@@ -3,9 +3,11 @@ import 'package:water_refilling_app/models/controller.dart';
 import 'package:water_refilling_app/my_widgets/custom_text_button.dart';
 import 'package:water_refilling_app/my_widgets/custom_textfield.dart';
 import 'package:water_refilling_app/pages/home.dart';
+import 'package:water_refilling_app/pages/rider_page.dart';
 import 'package:water_refilling_app/tools/variables.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:platform_device_id/platform_device_id.dart';
+import '../models/riders.dart';
 import '../models/user.dart';
 
 
@@ -30,20 +32,34 @@ class _LoginSate extends State<Login>{
   TextEditingController email = TextEditingController();
   @override
   void initState() {
-    Controller.getCollection(collectionName: 'users').then((value) {
+    Controller.getCollection(collectionName: 'riders').then((value) {
       PlatformDeviceId.getDeviceId.then((deviceID) {
-        value.where('deviceID',isEqualTo: deviceID!).where('isLogin',isEqualTo: true).get().then((userd) {
+        value.where('deviceID',isEqualTo: deviceID!).where('isLogin',isEqualTo: true).get().then((riderd) {
           // print(userd.docs.first.data());
           try{
-            User user = User.toObject(object: userd.docs.first.data());
-            Navigator.push(context, MaterialPageRoute(builder: (context)=>MyHomePage(user: user)));
+            Rider rider = Rider.toObject(object: riderd.docs.first.data());
+            Navigator.push(context, MaterialPageRoute(builder: (context)=>RiderPage(rider: rider)));
           }catch(e){
-              print(e);
+            Controller.getCollection(collectionName: 'users').then((value) {
+              PlatformDeviceId.getDeviceId.then((deviceID) {
+                value.where('deviceID',isEqualTo: deviceID!).where('isLogin',isEqualTo: true).get().then((userd) {
+                  // print(userd.docs.first.data());
+                  try{
+                    User user = User.toObject(object: userd.docs.first.data());
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>MyHomePage(user: user)));
+                  }catch(e){
+                    print(e);
+                  }
+                });
+              });
+
+            });
           }
         });
       });
 
     });
+
     super.initState();
   }
   @override
@@ -125,16 +141,31 @@ class _LoginSate extends State<Login>{
                                             user.upsert();
                                             Navigator.push(context, MaterialPageRoute(builder: (context) => MyHomePage(user: user)));
                                           }catch(e){
+                                            //-------------------------------------------------------------------------
+                                            Controller.getCollection(collectionName: 'riders').then((value) {
+                                              value.where('riderKey',isEqualTo: username.text).where('password',isEqualTo: password.text).get().then((riders){
+                                                try{
+                                                  Rider rider = Rider.toObject(object: riders.docs.first.data());
+                                                  rider.isLogin = true;
+                                                  rider.deviceID = deviceID!;
+                                                  rider.upsert();
+                                                  Navigator.push(context, MaterialPageRoute(builder: (context) => RiderPage(rider: rider)));
+                                                }catch(e){
 
-                                            Fluttertoast.showToast(
-                                                msg: "User not found!",
-                                                toastLength: Toast.LENGTH_LONG,
-                                                gravity: ToastGravity.CENTER,
-                                                timeInSecForIosWeb: 1,
-                                                backgroundColor: Colors.red,
-                                                textColor: Colors.white,
-                                                fontSize: 16.0
-                                            );
+                                                  Fluttertoast.showToast(
+                                                      msg: "User not found!",
+                                                      toastLength: Toast.LENGTH_LONG,
+                                                      gravity: ToastGravity.CENTER,
+                                                      timeInSecForIosWeb: 1,
+                                                      backgroundColor: Colors.red,
+                                                      textColor: Colors.white,
+                                                      fontSize: 16.0
+                                                  );
+                                                }
+
+                                              });
+                                            });
+                                            //-------------------------------------------------------------------------
                                           }
 
                                         });

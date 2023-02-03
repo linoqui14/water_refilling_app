@@ -143,7 +143,7 @@ class _StationPageState extends State<StationPage>{
 
                                             TileLayer(
 
-                                              urlTemplate: 'https://api.mapbox.com/styles/v1/linoqui14/cldkeehky000001og36ot0c67/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q',
+                                              urlTemplate: "https://api.mapbox.com/styles/v1/linoqui14/cldl76aim002v01o4pkskyxyd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q",
                                               additionalOptions: {
                                                 'accessToken':'sk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsZGw3MG5zODI4b3IzcHFwamhjbjZ2NzAifQ.Y_8z_gTuWOYp2Xyf5whNMw',
                                                 'id': 'mapbox.mapbox-streets-v8'
@@ -297,7 +297,7 @@ class _StationPageState extends State<StationPage>{
                                                 }
                                                 if( value.docs.where((element) {
                                                   CartItem cart = CartItem.toObject(object: element.data());
-                                                  return cart.productID == product.id;
+                                                  return cart.productID == product.id&&cart.status!='checkout';
                                                 }).isNotEmpty){
                                                   Fluttertoast.showToast(
                                                       msg: "This product is already in your cart!",

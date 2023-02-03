@@ -79,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
   @override
   void initState() {
 
-    tabController = new TabController(length: 3, vsync: this);
+    tabController = new TabController(length: 4, vsync: this);
 
     super.initState();
   }
@@ -425,7 +425,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                 if(snapshot.connectionState==ConnectionState.waiting)return Center();
                                                                 late UserAddress userAddress;
                                                                 if(snapshot.data!.docs.isEmpty){
-                                                                  print("Kalungat");
+
                                                                   _determinePosition().then((value) {
                                                                     LatLng latlong = LatLng(value.latitude, value.longitude);
                                                                     http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
@@ -507,7 +507,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                                                                     TileLayer(
 
-                                                                                      urlTemplate: 'https://api.mapbox.com/styles/v1/linoqui14/cldkeehky000001og36ot0c67/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q',
+                                                                                      urlTemplate: "https://api.mapbox.com/styles/v1/linoqui14/cldl76aim002v01o4pkskyxyd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q",
                                                                                       additionalOptions: {
                                                                                         'accessToken':'sk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsZGw3MG5zODI4b3IzcHFwamhjbjZ2NzAifQ.Y_8z_gTuWOYp2Xyf5whNMw',
                                                                                         'id': 'mapbox.mapbox-streets-v8'
@@ -764,6 +764,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                       ),
                                       child: CustomTextButton(
+                                        onPressed: (){
+                                          setState(() {
+
+                                          });
+                                        },
                                         style: GoogleFonts.quicksand(fontWeight: FontWeight.bold,fontSize: 12,color: Colors.black87),
                                         color: Colors.white,
                                         rAll: 18,
@@ -785,11 +790,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                     for(var query in snapshot.data!.docs){
                                       Station station = Station.toObject(object: query.data());
-                                      stations.add(station);
+                                      if(search.text.isNotEmpty){
+                                        if(station.name.toLowerCase().contains(search.text.toLowerCase())||station.address.toLowerCase().contains(search.text.toLowerCase())){
+                                          stations.add(station);
+                                        }
+                                      }
+                                      else{
+                                        stations.add(station);
+                                      }
+
                                     }
 
                                     return CarouselSlider(
                                       options: CarouselOptions(
+                                        enableInfiniteScroll: stations.length>1,
                                         autoPlayCurve: Curves.fastOutSlowIn,
                                         height: 400.0,
                                         viewportFraction: 0.8,
@@ -1350,36 +1364,41 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                                                           if(isValid){
                                                                             for(var station in stations){
-                                                                              OrderDetails order = OrderDetails(stationID: station,orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: 0, totalPrice: 0, status: OrderStatus.PENDING,);
-                                                                              int items = 0;
-                                                                              int totalValue = 0;
-                                                                              for(var cart in cartItems.where((element) => element.stationID==station)){
-                                                                                cart.status = 'checkout';
-                                                                                cart.orderID = order.id;
-                                                                                print(cart.stationID);
-                                                                                cart.upsert();
-                                                                                // print(cart.id);
-                                                                                items+=cart.totalCartItemQuantity;
-                                                                                totalValue+=cart.totalCartItemValue;
-                                                                              }
-                                                                              // print(items);
-                                                                              order.totalItems = items;
-                                                                              order.totalPrice = totalValue;
-                                                                              order.upsert();
+                                                                              Controller.getCollectionWhere(collectionName: 'user_addresses', field: 'userID', value: widget.user.id).then((value) {
+                                                                                UserAddress userAddress = UserAddress.toObject(object: value.docs.first.data());
+                                                                                OrderDetails order = OrderDetails(lat: userAddress.lat,long: userAddress.long,userAddress: userAddress.address,stationID: station,orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: 0, totalPrice: 0, status: OrderStatus.PENDING,riderID: "");
+                                                                                int items = 0;
+                                                                                int totalValue = 0;
+                                                                                for(var cart in cartItems.where((element) => element.stationID==station)){
+                                                                                  cart.status = 'checkout';
+                                                                                  cart.orderID = order.id;
+                                                                                  print(cart.stationID);
+                                                                                  cart.upsert();
+                                                                                  // print(cart.id);
+                                                                                  items+=cart.totalCartItemQuantity;
+                                                                                  totalValue+=cart.totalCartItemValue;
+                                                                                }
+                                                                                // print(items);
+                                                                                order.totalItems = items;
+                                                                                order.totalPrice = totalValue;
+                                                                                order.upsert();
+                                                                                Fluttertoast.showToast(
+                                                                                    msg: "Order successfully placed!",
+                                                                                    toastLength: Toast.LENGTH_SHORT,
+                                                                                    gravity: ToastGravity.CENTER,
+                                                                                    timeInSecForIosWeb: 1,
+                                                                                    backgroundColor: Colors.blue,
+                                                                                    textColor: Colors.white,
+                                                                                    fontSize: 12
+                                                                                );
+                                                                                setState(() {
+
+                                                                                });
+                                                                              });
+
 
                                                                             }
-                                                                            Fluttertoast.showToast(
-                                                                                msg: "Order successfully placed!",
-                                                                                toastLength: Toast.LENGTH_SHORT,
-                                                                                gravity: ToastGravity.CENTER,
-                                                                                timeInSecForIosWeb: 1,
-                                                                                backgroundColor: Colors.blue,
-                                                                                textColor: Colors.white,
-                                                                                fontSize: 12
-                                                                            );
-                                                                            setState(() {
 
-                                                                            });
                                                                           }
 
                                                                         },
@@ -1754,6 +1773,295 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                               )
                             ],
                           ),
+                          Scaffold(
+                            body: Column(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  alignment: Alignment.centerLeft,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Your",style: GoogleFonts.quicksand(fontWeight: FontWeight.w100,fontSize: 25),),
+                                      Text("Complete Orders",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
+                                    ],
+                                  ),
+                                ),
+                                SingleChildScrollView(
+                                  child: StreamBuilder(
+                                      stream: Controller.getCollectionStreamWhere(collectionName: 'orders', field: 'userID', value: widget.user.id),
+                                      builder: (context, snapshot) {
+                                        if(!snapshot.hasData)return Center();
+                                        if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                        if(snapshot.data!.docs.isEmpty)return Center();
+                                        List<OrderDetails> orderDetails = [];
+                                        for(var query in snapshot.data!.docs){
+                                          OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                          if(orderDetail.status!=OrderStatus.DELIVERED)continue;
+                                          orderDetails.add(orderDetail);
+                                          // print(query.data());
+                                        }
+
+                                        return Container(
+                                          height: Tools.getDeviceHeight(context)*.560,
+                                          padding: EdgeInsets.all(10),
+                                          width: Tools.getDeviceWidth(context),
+                                          child: ListView(
+                                            children: orderDetails.map((order) {
+                                              return Container(
+                                                alignment: Alignment.topCenter,
+                                                margin: EdgeInsets.all(10),
+                                                padding: EdgeInsets.all(10),
+                                                width: double.infinity,
+                                                height: 180,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.all(Radius.circular(15)),
+                                                  color: Colors.white,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.grey.withOpacity(0.09),
+                                                      spreadRadius: 3,
+                                                      blurRadius: 6,
+                                                      offset: Offset(1, 3), // changes position of shadow
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    StreamBuilder(
+                                                        stream: Controller.getCollectionStreamWhere(collectionName: 'stations', field: 'id', value: order.stationID),
+                                                        builder: (context, snapshot) {
+                                                          if(!snapshot.hasData)return Center();
+                                                          if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                                          if(snapshot.data!.docs.isEmpty)return Center();
+                                                          Station station = Station.toObject(object: snapshot.data!.docs.first.data());
+                                                          return Row(
+                                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                            children: [
+                                                              Column(
+                                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                                children: [
+                                                                  Text("Station",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,color: Colors.grey ,),),
+                                                                  Text(station.name,style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 20,height: 1,color: Colors.blue ,),),
+                                                                ],
+                                                              ),
+                                                              Column(
+
+                                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                                children: [
+                                                                  Text("Total Items",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,color: Colors.grey ,),),
+                                                                  Text(order.totalItems.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 13,height: 1,color: Colors.grey ,),),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          );
+                                                        }
+                                                    ),
+                                                    Container(
+                                                      padding: EdgeInsets.symmetric(horizontal: 20),
+                                                      height: 60,
+                                                      width: double.infinity,
+                                                      decoration: BoxDecoration(
+                                                          color: Colors.grey.withAlpha(20),
+                                                          borderRadius: BorderRadius.all(Radius.circular(50))
+
+                                                      ),
+
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          Stack(
+                                                            alignment: Alignment.center,
+                                                            children: [
+                                                              Padding(
+                                                                padding: const EdgeInsets.only(bottom: 12 ,left: 10,right: 12),
+                                                                child: Divider(thickness: 2,color: Colors.blue,),
+                                                              ),
+                                                              Row(
+                                                                children: [
+                                                                  Column(
+                                                                    children: [
+                                                                      Container(
+                                                                        padding: EdgeInsets.all(5),
+                                                                        height:order.status==OrderStatus.PENDING?30:15,
+                                                                        width: order.status==OrderStatus.PENDING?30:15,
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.blue,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+                                                                        child: Container(
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+
+                                                                        ),
+                                                                      ),
+                                                                      Text("Pending",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                    ],
+                                                                  ),
+                                                                  Expanded(child: Column(
+                                                                    children: [
+                                                                      Divider(thickness: 3,color: Colors.transparent,),
+                                                                      Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                    ],
+                                                                  )),
+                                                                  Column(
+                                                                    children: [
+                                                                      Container(
+                                                                        padding: EdgeInsets.all(5),
+                                                                        height:order.status==OrderStatus.ACCEPTED?30:15,
+                                                                        width: order.status==OrderStatus.ACCEPTED?30:15,
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.blue,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+                                                                        child: Container(
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+
+                                                                        ),
+                                                                      ),
+                                                                      Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                    ],
+                                                                  ),
+                                                                  Expanded(child: Column(
+                                                                    children: [
+                                                                      Divider(thickness: 3,color: Colors.transparent,),
+                                                                      Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                    ],
+                                                                  )),
+                                                                  Column(
+                                                                    children: [
+                                                                      Container(
+                                                                        padding: EdgeInsets.all(5),
+                                                                        height:order.status==OrderStatus.DELIVERING?30:15,
+                                                                        width: order.status==OrderStatus.DELIVERING?30:15,
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.blue,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+                                                                        child: Container(
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+
+                                                                        ),
+                                                                      ),
+                                                                      Text("Delivering",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                    ],
+                                                                  ),
+                                                                  Expanded(child: Column(
+                                                                    children: [
+                                                                      Divider(thickness: 3,color: Colors.transparent,),
+                                                                      Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                    ],
+                                                                  )),
+                                                                  Column(
+                                                                    children: [
+                                                                      Container(
+                                                                        padding: EdgeInsets.all(5),
+                                                                        height:order.status==OrderStatus.DELIVERED?30:15,
+                                                                        width: order.status==OrderStatus.DELIVERED?30:15,
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.blue,
+                                                                            shape: BoxShape.circle
+                                                                        ),
+                                                                        child: Container(
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+
+                                                                        ),
+                                                                      ),
+                                                                      Text("Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                    ],
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+
+                                                        ],
+                                                      ),
+                                                    ),
+
+                                                    Row(
+                                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        Text("Total Price",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 18,color: Colors.grey ,)),
+                                                        Text("Php."+order.totalPrice.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 18,color: Colors.orange ,)),
+                                                      ],
+                                                    )
+
+
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        );
+                                      }
+                                  ),
+                                )
+                              ],
+                            ),
+                            bottomNavigationBar: BottomAppBar(
+
+                              child: StreamBuilder(
+                                  stream: Controller.getCollectionStreamWhere(collectionName: 'orders', field: 'userID', value: widget.user.id),
+                                  builder: (context, snapshot) {
+                                    if(!snapshot.hasData)return Center();
+                                    if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                    if(snapshot.data!.docs.isEmpty)return Center();
+                                    int totalSold = 0;
+                                    int totalValueSold = 0;
+                                    List<OrderDetails> orderDetails = [];
+                                    for(var query in snapshot.data!.docs){
+                                      OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                      if(orderDetail.status!=OrderStatus.DELIVERED)continue;
+                                      if(orderDetail.orderType!=OrderType.DELIVERY)continue;
+                                      totalSold+=orderDetail.totalItems;
+                                      totalValueSold+=orderDetail.totalPrice;
+                                      orderDetails.add(orderDetail);
+                                      // print(query.data());
+                                    }
+
+                                    return Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.all(5),
+                                      height: 55,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              Text('Bought Containers',style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 10)),
+                                              Text(totalSold.toString(),style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,color:Colors.blue,fontSize: 15)),
+                                            ],
+                                          ),
+                                          Padding(padding: EdgeInsets.symmetric(horizontal: 20)),
+                                          Column(
+                                            children: [
+                                              Text('Total Value',style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 10)),
+                                              Text('Php.${totalValueSold.toString()}',style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,color:Colors.orange,fontSize: 15)),
+                                            ],
+                                          )
+                                        ],
+                                      ),
+                                    );
+                                  }
+                              ),
+                            ),
+                          ),
+
                         ]
                     ),
                   )
@@ -1798,7 +2106,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                               icon:  Icon(Ionicons.basket_outline,color: selectedIndex==1?Colors.blue:Colors.grey,),
                             ),
                             Tab(
-                              icon: Icon(Icons.receipt_long_outlined,color: selectedIndex==2?Colors.blue:Colors.grey,),
+                              icon: Icon(Icons.local_shipping,color: selectedIndex==2?Colors.blue:Colors.grey,),
+                            ),
+                            Tab(
+                              icon: Icon(Icons.receipt_long_outlined,color: selectedIndex==3?Colors.blue:Colors.grey,),
                             ),
                           ],
                         );

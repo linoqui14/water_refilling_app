@@ -24,9 +24,9 @@ class PaymentType{
 
 
 class OrderDetails extends Controller{
-  String orderType,paymentType,userID,status,stationID;
+  String orderType,paymentType,userID,status,stationID,riderID,userAddress;
   int totalPrice,totalItems;
-
+  double lat,long;
   OrderDetails(
       {
         required this.orderType,
@@ -35,7 +35,11 @@ class OrderDetails extends Controller{
         required this.totalItems,
         required this.totalPrice,
         required this.status,
-        required this.stationID
+        required this.stationID,
+        required this.riderID,
+        required this.userAddress,
+        required this.lat,
+        required this.long,
       }):super(collectionName: 'orders',id: Controller.genID(11));
 
   @override
@@ -49,6 +53,10 @@ class OrderDetails extends Controller{
       'totalPrice':totalPrice,
       'status':status,
       'stationID':stationID,
+      'riderID':riderID,
+      'userAddress':userAddress,
+      'lat':lat,
+      'long':long,
     };
   }
 
@@ -61,6 +69,10 @@ class OrderDetails extends Controller{
       totalPrice: object['totalPrice'],
       status: object['status'],
       stationID: object['stationID'],
+      riderID: object['riderID'],
+      userAddress: object['userAddress'],
+      lat: object['lat'],
+      long: object['long'],
     );
     order.id = object['id'];
     return order;
