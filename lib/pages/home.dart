@@ -1448,6 +1448,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                       List<OrderDetails> orderDetails = [];
                                       for(var query in snapshot.data!.docs){
                                         OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                        if(orderDetail.status==OrderStatus.DELIVERED)continue;
                                         orderDetails.add(orderDetail);
                                         // print(query.data());
                                       }
