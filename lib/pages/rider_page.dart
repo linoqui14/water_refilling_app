@@ -15,7 +15,7 @@ import 'package:ionicons/ionicons.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lottie/lottie.dart' as lottie;
 import 'package:latlong2/latlong.dart' as latlong;
-import 'package:water_refilling_app/models/order_details.dart';
+import 'package:water_refilling_app/models/order_detail.dart';
 import 'package:water_refilling_app/models/riders.dart';
 import 'package:http/http.dart' as http;
 import '../models/cart.dart';
@@ -243,7 +243,7 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text("Available",style: GoogleFonts.quicksand(fontWeight: FontWeight.w100,fontSize: 25),),
+                                    Text("Accepted",style: GoogleFonts.quicksand(fontWeight: FontWeight.w100,fontSize: 25),),
                                     Text("Orders",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
                                   ],
                                 ),
@@ -308,10 +308,25 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                   builder: (context,snapshot){
                                     if(!snapshot.hasData)return Center(child: CircularProgressIndicator(),);
                                     if(snapshot.connectionState==ConnectionState.waiting)return Center(child: CircularProgressIndicator(),);
+                                    if(snapshot.data!.docs.isEmpty) {
+                                      return Container(
+                                        height: 500,
+                                        alignment: Alignment.center,
 
-                                    List<OrderDetails> orders = [];
+                                        child:SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              lottie.Lottie.network("https://assets8.lottiefiles.com/private_files/lf30_e3pteeho.json",width: 200),
+                                              Text("Your cargo is empty.",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                            ],
+                                          ),
+                                        )
+                                    );
+                                    }
+                                    List<OrderDetail> orders = [];
                                     for(var query in snapshot.data!.docs){
-                                      OrderDetails order = OrderDetails.toObject(object: query.data());
+                                      OrderDetail order = OrderDetail.toObject(object: query.data());
                                       if(order.status!=OrderStatus.ACCEPTED)continue;
                                       if(order.orderType!=OrderType.DELIVERY)continue;
                                       double distance = 0;
@@ -339,7 +354,22 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
 
 
                                     }
+                                    if(orders.isEmpty){
+                                      return Container(
+                                          height:300,
+                                          alignment: Alignment.center,
 
+                                          child:SingleChildScrollView(
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                lottie.Lottie.network("https://assets8.lottiefiles.com/private_files/lf30_e3pteeho.json",width: 200),
+                                                Text("There are no accepted orders yet",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                              ],
+                                            ),
+                                          )
+                                      );
+                                    }
                                     return CarouselSlider(
                                       options: CarouselOptions(
                                         enableInfiniteScroll: orders.length>1,
@@ -730,7 +760,7 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                           Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text("Accepted Orders",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
+                                              Text("Cargo",style: GoogleFonts.lobster(fontWeight: FontWeight.bold,fontSize: 40,color: Colors.blue),),
 
                                             ],
                                           ),
@@ -743,14 +773,45 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                           builder: (context, snapshot) {
                                             if(!snapshot.hasData)return Center();
                                             if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                            if(snapshot.data!.docs.isEmpty)return Center();
-                                            List<OrderDetails> orderDetails = [];
+                                            if(snapshot.data!.docs.isEmpty) {
+                                              return Container(
+
+                                                  alignment: Alignment.center,
+
+                                                  child:SingleChildScrollView(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        lottie.Lottie.network("https://assets8.lottiefiles.com/private_files/lf30_e3pteeho.json",width: 200),
+                                                        Text("Your cargo is empty.",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                                      ],
+                                                    ),
+                                                  )
+                                              );
+                                            }
+                                            List<OrderDetail> orderDetails = [];
                                             for(var query in snapshot.data!.docs){
-                                              OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                              OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                               if(orderDetail.status!=OrderStatus.DELIVERING)continue;
                                               if(orderDetail.orderType!=OrderType.DELIVERY)continue;
                                               orderDetails.add(orderDetail);
                                               // print(query.data());
+                                            }
+                                            if(orderDetails.isEmpty){
+                                              return Container(
+                                                  height: 500,
+                                                  alignment: Alignment.center,
+
+                                                  child:SingleChildScrollView(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        lottie.Lottie.network("https://assets8.lottiefiles.com/private_files/lf30_e3pteeho.json",width: 200),
+                                                        Text("Your cargo is empty",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                                      ],
+                                                    ),
+                                                  )
+                                              );
                                             }
                                             double distanceFromCustomer = 0;
                                             return Container(
@@ -1114,22 +1175,22 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                                                 text: "Drop",
                                                                 onHold: (){
                                                                   Controller.getCollectionWhere(collectionName: 'cart_items', field: 'orderID', value:order.id ).then((value) {
-                                                                      List<CartItem> carts = [];
-                                                                      for(var cartd in value.docs){
-                                                                        CartItem cart =  CartItem.toObject(object: cartd.data());
-                                                                        carts.add(cart);
-                                                                      }
-                                                                      for(var cart in carts){
-                                                                        Controller.getCollectionWhere(collectionName: 'products', field: 'id', value:cart.productID ).then((prod) {
-                                                                          Product product = Product.toObject(object: prod.docs.first.data());
-                                                                          Controller.getCollectionWhere(collectionName: 'stocks', field: 'id', value:product.stockID ).then((stok) {
-                                                                            Stock stock = Stock.toObject(object: stok.docs.first.data());
-                                                                            stock.sold+=cart.totalCartItemQuantity;
-                                                                            stock.stock-=cart.totalCartItemQuantity;
-                                                                            stock.upsert();
-                                                                          });
+                                                                    List<CartItem> carts = [];
+                                                                    for(var cartd in value.docs){
+                                                                      CartItem cart =  CartItem.toObject(object: cartd.data());
+                                                                      carts.add(cart);
+                                                                    }
+                                                                    for(var cart in carts){
+                                                                      Controller.getCollectionWhere(collectionName: 'products', field: 'id', value:cart.productID ).then((prod) {
+                                                                        Product product = Product.toObject(object: prod.docs.first.data());
+                                                                        Controller.getCollectionWhere(collectionName: 'stocks', field: 'id', value:product.stockID ).then((stok) {
+                                                                          Stock stock = Stock.toObject(object: stok.docs.first.data());
+                                                                          stock.sold+=cart.totalCartItemQuantity;
+                                                                          stock.stock-=cart.totalCartItemQuantity;
+                                                                          stock.upsert();
                                                                         });
-                                                                      }
+                                                                      });
+                                                                    }
                                                                   });
                                                                   // if(distanceFromCustomer>10){
                                                                   //   Fluttertoast.showToast(
@@ -1152,6 +1213,7 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                                                       textColor: Colors.white,
                                                                       fontSize: 12
                                                                   );
+                                                                  order.timeDelivered = DateTime.now().toString();
                                                                   order.status=OrderStatus.DELIVERED;
                                                                   order.upsert();
                                                                   setState(() {
@@ -1206,14 +1268,15 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                         if(!snapshot.hasData)return Center();
                                         if(snapshot.connectionState==ConnectionState.waiting)return Center();
                                         if(snapshot.data!.docs.isEmpty)return Center();
-                                        List<OrderDetails> orderDetails = [];
+                                        List<OrderDetail> orderDetails = [];
                                         for(var query in snapshot.data!.docs){
-                                          OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                          OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                           if(orderDetail.status!=OrderStatus.DELIVERED)continue;
                                           if(orderDetail.orderType!=OrderType.DELIVERY)continue;
                                           orderDetails.add(orderDetail);
                                           // print(query.data());
                                         }
+
                                         double distanceFromCustomer = 0;
                                         return Container(
                                           height: Tools.getDeviceHeight(context)*.560,
@@ -1438,9 +1501,9 @@ class _RiderPageState extends State<RiderPage> with TickerProviderStateMixin{
                                     if(snapshot.data!.docs.isEmpty)return Center();
                                     int totalSold = 0;
                                     int totalValueSold = 0;
-                                    List<OrderDetails> orderDetails = [];
+                                    List<OrderDetail> orderDetails = [];
                                     for(var query in snapshot.data!.docs){
-                                      OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                      OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                       if(orderDetail.status!=OrderStatus.DELIVERED)continue;
                                       if(orderDetail.orderType!=OrderType.DELIVERY)continue;
                                       totalSold+=orderDetail.totalItems;

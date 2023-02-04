@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:water_refilling_app/main.dart';
 import 'package:water_refilling_app/models/station.dart';
 import 'package:water_refilling_app/my_widgets/custom_text_button.dart';
 import 'package:water_refilling_app/my_widgets/custom_textfield.dart';
@@ -13,7 +14,7 @@ import 'package:lottie/lottie.dart' as lot;
 import 'package:water_refilling_app/pages/station.dart';
 import '../models/cart.dart';
 import '../models/controller.dart';
-import '../models/order_details.dart';
+import '../models/order_detail.dart';
 import '../models/product.dart';
 import '../models/stock.dart';
 import '../models/user.dart';
@@ -25,7 +26,7 @@ import 'login.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 
 class MyHomePage extends StatefulWidget {
@@ -39,6 +40,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
   TextEditingController search = TextEditingController();
   int backCounter = 0;
   late TabController tabController;
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  late NotificationDetails platformChannelSpecifics;
+  late Function(Function()) _updateNavigation;
+
 
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
@@ -76,10 +81,82 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
     // continue accessing the position of the device.
     return await Geolocator.getCurrentPosition();
   }
+
+
+
   @override
   void initState() {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'findable',
+      'findable-tag',
+      importance: Importance.max,
+      priority: Priority.high,
+
+    );
+    var initializationSettingsAndroid = const AndroidInitializationSettings('@mipmap/ic_launcher'); // <- default icon name is @mipmap/ic_launcher
+    platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+
+    );
+    var initializationSettings = InitializationSettings(android: initializationSettingsAndroid,);
+    flutterLocalNotificationsPlugin.initialize(initializationSettings,
+        onSelectNotification: (value){
+          _updateNavigation((){
+            tabController.index=2;
+          });
+        }
+    );
 
     tabController = new TabController(length: 4, vsync: this);
+    Controller.getCollectionStreamWhere(collectionName: 'orders', field: 'userID', value: widget.user.id).listen((event) {
+      int count = 0;
+      for(var orderd in event.docs){
+        OrderDetail order = OrderDetail.toObject(object: orderd.data());
+        switch(order.status){
+          case OrderStatus.ACCEPTED:
+            Controller.getCollectionWhere(collectionName: 'stations', field: 'id', value: order.stationID).then((value) {
+              Station station = Station.toObject(object:value.docs.first.data());
+              flutterLocalNotificationsPlugin.show(count, "Water Refiling Station", "${station.name} just accepted your order", platformChannelSpecifics);
+              _updateNavigation((){
+                tabController.index=2;
+              });
+
+            });
+            break;
+          case OrderStatus.DELIVERING:
+            Controller.getCollectionWhere(collectionName: 'stations', field: 'id', value: order.stationID).then((value) {
+              Station station = Station.toObject(object:value.docs.first.data());
+              flutterLocalNotificationsPlugin.show(count, "Water Refiling Station", "${station.name} is delivering your order", platformChannelSpecifics);
+              _updateNavigation((){
+                tabController.index=2;
+              });
+
+            });
+
+            break;
+          case OrderStatus.DELIVERED:
+            if(!order.isNotified){
+              Controller.getCollectionWhere(collectionName: 'stations', field: 'id', value: order.stationID).then((value) {
+                Station station = Station.toObject(object:value.docs.first.data());
+                flutterLocalNotificationsPlugin.show(count, "Water Refiling Station", "${station.name} just delivered your order", platformChannelSpecifics);
+                order.isNotified = true;
+
+                order.upsert();
+                _updateNavigation((){
+                  tabController.index=2;
+                });
+
+              });
+            }
+
+
+            break;
+        }
+        count++;
+      }
+    });
+
+
 
     super.initState();
   }
@@ -197,27 +274,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-
-                        // Container(
-                        //   alignment: Alignment.center,
-                        //   width: 35,
-                        //   height: 35,
-                        //   margin: EdgeInsets.all(10),
-                        //   decoration: BoxDecoration(
-                        //       boxShadow: [
-                        //         BoxShadow(
-                        //           color: Colors.grey.withOpacity(0.09),
-                        //           spreadRadius: 3,
-                        //           blurRadius: 6,
-                        //           offset: Offset(1, 3), // changes position of shadow
-                        //         ),
-                        //       ],
-                        //       color: Colors.white,
-                        //       borderRadius: BorderRadius.all(Radius.circular(13))
-                        //
-                        //   ),
-                        //   child: Icon(Ionicons.reorder_three_outline),
-                        // ),
                         GestureDetector(
                           child: Container(
                             alignment: Alignment.center,
@@ -244,6 +300,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                             TextEditingController firstname = TextEditingController(text: widget.user.firstname);
                             TextEditingController lastname = TextEditingController(text: widget.user.lastname);
                             TextEditingController email = TextEditingController(text: widget.user.email);
+                            TextEditingController address = TextEditingController(text: widget.user.email);
 
                             Tools.statefulDialog(
                                 onPop: ()async=>true,
@@ -255,7 +312,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                     child: Container(
                                       padding: EdgeInsets.all(10),
                                       width:Tools.getDeviceWidth(context) ,
-                                      height: Tools.getDeviceHeight(context)*.9,
+                                      height: Tools.getDeviceHeight(context)*.75,
                                       decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.all(Radius.circular(20))
@@ -357,6 +414,213 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                         ),
                                                       ],
                                                     ),
+                                                    StreamBuilder(
+                                                        stream: Controller.getCollectionStreamWhere(collectionName: 'user_addresses', field: 'userID', value: widget.user.id),
+                                                        builder: (context, snapshot) {
+                                                          if(!snapshot.hasData)return Center(child: CircularProgressIndicator(),);
+                                                          if(snapshot.connectionState==ConnectionState.waiting)return Center(child: CircularProgressIndicator(),);
+                                                          if(snapshot.data!.docs.isEmpty){
+                                                            _determinePosition().then((value) {
+                                                              http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${value.latitude}&lon=${value.longitude}")).then((response) {
+                                                                var json = jsonDecode(response.body);
+                                                                address.text = json['display_name'];
+                                                                UserAddress useAddress = UserAddress(address: address.text, userID: widget.user.id, lat: value.latitude, long: value.longitude);
+                                                                useAddress.upsert();
+                                                              });
+                                                            });
+                                                          }
+                                                          UserAddress useAddress = UserAddress.toObject(object: snapshot.data!.docs.first.data());
+                                                          address.text = useAddress.address;
+                                                          return CustomTextField(
+                                                            style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.black54,fontSize: 8,height: 1),
+                                                            minLines: 3,
+                                                            padding: EdgeInsets.only(top: 10),
+                                                            readonly: true,
+                                                            enableFloat: true,
+                                                            icon: Icons.map_outlined,
+                                                            color: Colors.blue,
+                                                            hint: "Address",
+                                                            controller: address,
+                                                            suffix:  CustomTextButton(
+                                                              onPressed: (){
+
+                                                                LatLng selectedLocation = LatLng(useAddress.lat,  useAddress.long);
+                                                                MapController map = MapController();
+
+                                                                Tools.statefulDialog(
+                                                                    context: context,
+                                                                    builder: (context,updateMap){
+                                                                      if(address.text.isNotEmpty&&address.text.isEmpty){
+                                                                        address.text = address.text;
+                                                                        http.get(Uri.parse("https://geocode.maps.co/search?q=${address.text}")).then((value) {
+                                                                          var json = jsonDecode(value.body);
+                                                                          // 1128 kauswagan cagayan de Oro city
+                                                                          double lat = double.parse(json.first['lat']);
+                                                                          double long = double.parse(json.first['lon']);
+                                                                          updateMap((){
+                                                                            selectedLocation = LatLng(lat, long);
+                                                                            map.move(selectedLocation, 18);
+                                                                          });
+
+                                                                        });
+                                                                      }
+                                                                      return Dialog(
+                                                                        insetPadding: EdgeInsets.zero,
+                                                                        backgroundColor: Colors.transparent,
+                                                                        child: Container(
+                                                                          padding: EdgeInsets.all(20),
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              borderRadius: BorderRadius.all(Radius.circular(30))
+                                                                          ),
+                                                                          height: 600,
+                                                                          width: 500,
+                                                                          child: Column(
+                                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                                            children: [
+                                                                              Text("Click on location to select address.",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),),
+                                                                              Padding(padding: EdgeInsets.only(bottom: 20)),
+                                                                              ClipRRect(
+                                                                                borderRadius: BorderRadius.all(Radius.circular(25)),
+                                                                                child: SizedBox(
+                                                                                  width: 500,
+                                                                                  height: 300,
+                                                                                  child: FlutterMap(
+                                                                                    mapController: map,
+                                                                                    options: MapOptions(
+                                                                                      scrollWheelVelocity: 0.0,
+                                                                                      keepAlive: true,
+                                                                                      onTap: (tap,latlong){
+                                                                                        http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
+                                                                                          var json = jsonDecode(value.body);
+                                                                                          updateMap((){
+                                                                                            selectedLocation = latlong;
+                                                                                            map.move(selectedLocation, 18);
+                                                                                            address.text = json['display_name'];
+                                                                                          });
+
+                                                                                        });
+                                                                                      },
+                                                                                      center: selectedLocation,
+                                                                                      zoom: 15,
+                                                                                    ),
+                                                                                    // nonRotatedChildren: [
+                                                                                    //   AttributionWidget.defaultWidget(
+                                                                                    //     source: 'OpenStreetMap contributors',
+                                                                                    //     onSourceTapped: null,
+                                                                                    //   ),
+                                                                                    // ],
+                                                                                    children: [
+
+                                                                                      TileLayer(
+
+                                                                                        urlTemplate: 'https://api.mapbox.com/styles/v1/linoqui14/cldkeehky000001og36ot0c67/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q',
+                                                                                        additionalOptions: {
+                                                                                          'accessToken':'sk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsZGw3MG5zODI4b3IzcHFwamhjbjZ2NzAifQ.Y_8z_gTuWOYp2Xyf5whNMw',
+                                                                                          'id': 'mapbox.mapbox-streets-v8'
+                                                                                        },
+                                                                                        // userAgentPackageName: 'com.example.app',
+                                                                                      ),
+                                                                                      MarkerLayer(
+                                                                                        markers: [
+                                                                                          Marker(
+                                                                                            point: selectedLocation,
+                                                                                            width: 15,
+                                                                                            height: 15,
+                                                                                            builder: (context) => Icon(Icons.place_rounded,color: Colors.blue,),
+                                                                                          ),
+                                                                                        ],
+                                                                                      ),
+                                                                                    ],
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                              Padding(padding: EdgeInsets.only(top: 10)),
+                                                                              Center(child: Text("or",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),)),
+                                                                              Padding(padding: EdgeInsets.only(top: 10)),
+                                                                              CustomTextField(
+
+                                                                                icon: Icons.place_outlined,
+                                                                                enableFloat: false,
+                                                                                color: Colors.blue,
+                                                                                hint: "Type address",
+                                                                                controller: address,
+                                                                                suffix: CustomTextButton(
+                                                                                  style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.blue,fontSize: 15,height: 1),
+                                                                                  color: Colors.transparent,
+                                                                                  onPressed: (){
+                                                                                    http.get(Uri.parse("https://geocode.maps.co/search?q=${address.text}")).then((value) {
+                                                                                      var json = jsonDecode(value.body);
+                                                                                      // 1128 kauswagan cagayan de Oro city
+                                                                                      double lat = double.parse(json.first['lat']);
+                                                                                      double long = double.parse(json.first['lon']);
+                                                                                      selectedLocation = LatLng(lat, long);
+                                                                                      useAddress.lat = lat;
+                                                                                      useAddress.long = long;
+                                                                                      updateMap((){
+                                                                                        selectedLocation = LatLng(lat, long);
+                                                                                        map.move(selectedLocation, 18);
+                                                                                      });
+
+                                                                                    });
+                                                                                  },
+                                                                                  rTopLeft: 0,
+                                                                                  rBottomLeft: 0,
+                                                                                  height: 50,
+                                                                                  width: 50,
+                                                                                  text: "Find",
+                                                                                ),
+                                                                              ),
+                                                                              Padding(padding: EdgeInsets.only(top: 10)),
+                                                                              Row(
+                                                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                                children: [
+                                                                                  CustomTextButton(
+                                                                                    onPressed: (){
+                                                                                      if(address.text.isEmpty)return;
+                                                                                      setState(() {
+                                                                                        address.text = address.text.toTitleCase();
+                                                                                        useAddress.address = address.text;
+
+                                                                                        useAddress.upsert();
+                                                                                        Navigator.pop(context);
+                                                                                      });
+                                                                                    },
+                                                                                    color: Colors.blue,
+                                                                                    text: "Confirm",
+                                                                                  ),
+                                                                                  CustomTextButton(
+                                                                                    padding: EdgeInsets.zero,
+                                                                                    style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),
+                                                                                    onPressed: (){
+                                                                                      Navigator.pop(context);
+                                                                                    },
+                                                                                    color: Colors.transparent,
+                                                                                    text: "Cancel",
+                                                                                  ),
+                                                                                ],
+                                                                              )
+
+                                                                            ],
+                                                                          ),
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                    onPop: ()async=>true
+                                                                );
+                                                              },
+                                                              style: GoogleFonts.notoSansNKo(fontSize: 10,height: 1,color: Colors.blue),
+                                                              color: Colors.transparent,
+                                                              height: 50,
+                                                              width: 130,
+                                                              rTopLeft: 0,
+                                                              rBottomLeft: 0,
+                                                              icon: Icon(Icons.place_rounded,color: Colors.blue,),
+                                                              text: "Pin Location",
+                                                            ),
+                                                          );
+                                                        }
+                                                    ),
 
                                                     CustomTextButton(
 
@@ -410,291 +674,220 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                 ),
                                               ),
                                               Padding(padding: EdgeInsets.only(top: 0)),
-                                              Builder(
-                                                  builder: (context) {
-                                                    TextEditingController address = TextEditingController();
-                                                    LatLng selectedLocation = LatLng(8.499010,  124.629230);
-                                                    MapController map = MapController();
-                                                    late Function(Function()) _updateMapOnly;
-                                                    return StatefulBuilder(
-                                                        builder: (context,updateMap) {
-                                                          return StreamBuilder(
-                                                              stream: Controller.getCollectionStreamWhere(collectionName: 'user_addresses', field: 'userID', value: widget.user.id),
-                                                              builder: (context, snapshot) {
-                                                                if(!snapshot.hasData)return Center();
-                                                                if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                                                late UserAddress userAddress;
-                                                                if(snapshot.data!.docs.isEmpty){
 
-                                                                  _determinePosition().then((value) {
-                                                                    LatLng latlong = LatLng(value.latitude, value.longitude);
-                                                                    http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
-                                                                      var json = jsonDecode(value.body);
-                                                                      userAddress = UserAddress(address: json['display_name'], userID: widget.user.id, lat: latlong.latitude, long: latlong.longitude);
-                                                                      userAddress.upsert().then((value) {
-                                                                        updateMap((){
-                                                                          selectedLocation = latlong;
-                                                                          map.move(selectedLocation, 18);
-                                                                          address.text = json['display_name'];
-                                                                        });
-                                                                      });
-
-
-                                                                    });
-                                                                  });
-                                                                }
-                                                                else{
-                                                                  userAddress = UserAddress.toObject(object: snapshot.data!.docs.first.data());
-
-                                                                  address.text = userAddress.address;
-                                                                }
-
-                                                                return Container(
-                                                                  // padding: EdgeInsets.all(20),
-                                                                  decoration: BoxDecoration(
-                                                                      color: Colors.white,
-                                                                      borderRadius: BorderRadius.all(Radius.circular(10))
-                                                                  ),
-                                                                  height: 400,
-                                                                  width: double.infinity,
-                                                                  child: Column(
-                                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                                    children: [
-                                                                      Text("Click on location to select address.",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 10,height: 1),),
-                                                                      // Padding(padding: EdgeInsets.only(bottom: 20)),
-                                                                      StatefulBuilder(
-                                                                          builder: (context,updateMapOnly) {
-                                                                            _updateMapOnly = updateMapOnly;
-                                                                            return ClipRRect(
-                                                                              borderRadius: BorderRadius.all(Radius.circular(25)),
-                                                                              child: SizedBox(
-                                                                                width: 500,
-                                                                                height: 200,
-                                                                                child: FlutterMap(
-
-                                                                                  mapController: map,
-                                                                                  options: MapOptions(
-                                                                                    onMapReady: (){
-                                                                                      _updateMapOnly((){
-                                                                                        selectedLocation = LatLng(userAddress.lat, userAddress.long);
-                                                                                        map.move(LatLng(userAddress.lat, userAddress.long), 18);
-                                                                                      });
-
-                                                                                    },
-                                                                                    scrollWheelVelocity: 0.0001,
-                                                                                    keepAlive: true,
-                                                                                    onTap: (tap,latlong){
-                                                                                      http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
-                                                                                        var json = jsonDecode(value.body);
-                                                                                        _updateMapOnly((){
-                                                                                          selectedLocation = latlong;
-                                                                                          map.move(selectedLocation, 18);
-                                                                                          address.text = json['display_name'];
-                                                                                        });
-
-                                                                                      });
-                                                                                    },
-                                                                                    center: selectedLocation,
-                                                                                    zoom: 15,
-                                                                                  ),
-                                                                                  // nonRotatedChildren: [
-                                                                                  //   AttributionWidget.defaultWidget(
-                                                                                  //     source: 'OpenStreetMap contributors',
-                                                                                  //     onSourceTapped: null,
-                                                                                  //   ),
-                                                                                  // ],
-                                                                                  children: [
-
-                                                                                    TileLayer(
-
-                                                                                      urlTemplate: "https://api.mapbox.com/styles/v1/linoqui14/cldl76aim002v01o4pkskyxyd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q",
-                                                                                      additionalOptions: {
-                                                                                        'accessToken':'sk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsZGw3MG5zODI4b3IzcHFwamhjbjZ2NzAifQ.Y_8z_gTuWOYp2Xyf5whNMw',
-                                                                                        'id': 'mapbox.mapbox-streets-v8'
-                                                                                      },
-                                                                                      // userAgentPackageName: 'com.example.app',
-                                                                                    ),
-                                                                                    MarkerLayer(
-                                                                                      markers: [
-                                                                                        Marker(
-                                                                                          point: selectedLocation,
-                                                                                          width: 15,
-                                                                                          height: 15,
-                                                                                          builder: (context) => Icon(Icons.place_rounded,color: Colors.blue,),
-                                                                                        ),
-                                                                                      ],
-                                                                                    ),
-                                                                                  ],
-                                                                                ),
-                                                                              ),
-                                                                            );
-                                                                          }
-                                                                      ),
-                                                                      Padding(padding: EdgeInsets.only(top: 10)),
-                                                                      Center(child: Text("or",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),)),
-                                                                      Padding(padding: EdgeInsets.only(top: 10)),
-                                                                      CustomTextField(
-
-                                                                        icon: Icons.place_outlined,
-                                                                        enableFloat: false,
-                                                                        color: Colors.blue,
-                                                                        hint: "Type address",
-                                                                        controller: address,
-                                                                        suffix: CustomTextButton(
-                                                                          style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.blue,fontSize: 15,height: 1),
-                                                                          color: Colors.transparent,
-                                                                          onPressed: (){
-                                                                            http.get(Uri.parse("https://geocode.maps.co/search?q=${address.text}")).then((value) {
-                                                                              var json = jsonDecode(value.body);
-                                                                              // 1128 kauswagan cagayan de Oro city
-                                                                              double lat = double.parse(json.first['lat']);
-                                                                              double long = double.parse(json.first['lon']);
-                                                                              selectedLocation = LatLng(lat, long);
-                                                                              _updateMapOnly((){
-                                                                                selectedLocation = LatLng(lat, long);
-                                                                                map.move(selectedLocation, 18);
-                                                                              });
-
-                                                                            });
-                                                                          },
-                                                                          rTopLeft: 0,
-                                                                          rBottomLeft: 0,
-                                                                          height: 50,
-                                                                          width: 50,
-                                                                          text: "Find",
-                                                                        ),
-                                                                      ),
-
-                                                                      Row(
-                                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                                        children: [
-                                                                          CustomTextButton(
-                                                                            width:120,
-                                                                            onPressed: (){
-                                                                              if(address.text.isEmpty)return;
-
-                                                                              userAddress.address = address.text;
-                                                                              userAddress.lat = selectedLocation.latitude;
-                                                                              userAddress.long = selectedLocation.longitude;
-
-                                                                              userAddress.upsert().then((value) {
-                                                                                Fluttertoast.showToast(
-                                                                                    msg: "Location update successfully!",
-                                                                                    toastLength: Toast.LENGTH_SHORT,
-                                                                                    gravity: ToastGravity.CENTER,
-                                                                                    timeInSecForIosWeb: 1,
-                                                                                    backgroundColor: Colors.blue,
-                                                                                    textColor: Colors.white,
-                                                                                    fontSize: 16.0
-                                                                                );
-                                                                                _updateMapOnly((){
-
-                                                                                });
-                                                                              });
-
-                                                                              // setState(() {
-                                                                              //   stationAddress.text = address.text.toTitleCase();
-                                                                              //   Navigator.pop(context);
-                                                                              // });
-                                                                            },
-                                                                            color: Colors.blue,
-                                                                            text: "Save Location",
-                                                                          ),
-                                                                          CustomTextButton(
-                                                                            padding: EdgeInsets.zero,
-                                                                            style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),
-                                                                            onPressed: (){
-                                                                              // Navigator.pop(context);
-                                                                            },
-                                                                            color: Colors.transparent,
-                                                                            text: "",
-                                                                          ),
-                                                                        ],
-                                                                      )
-
-                                                                    ],
-                                                                  ),
-                                                                );
-                                                              }
-                                                          );
-                                                        }
-                                                    );
-                                                  }
-                                              ),
-                                              // Row(
-                                              //   children: [
-                                              //     Expanded(
-                                              //       child: CustomTextButton(
+                                              // CustomTextField(
+                                              //     hint: "",
+                                              //     controller: controller)
+                                              // Builder(
+                                              //     builder: (context) {
+                                              //       TextEditingController address = TextEditingController();
+                                              //       LatLng selectedLocation = LatLng(8.499010,  124.629230);
+                                              //       MapController map = MapController();
+                                              //       late Function(Function()) _updateMapOnly;
+                                              //       return StatefulBuilder(
+                                              //           builder: (context,updateMap) {
+                                              //             return StreamBuilder(
+                                              //                 stream: Controller.getCollectionStreamWhere(collectionName: 'user_addresses', field: 'userID', value: widget.user.id),
+                                              //                 builder: (context, snapshot) {
+                                              //                   if(!snapshot.hasData)return Center();
+                                              //                   if(snapshot.connectionState==ConnectionState.waiting)return Center();
+                                              //                   late UserAddress userAddress;
+                                              //                   if(snapshot.data!.docs.isEmpty){
                                               //
-                                              //         text: "Update",
-                                              //         color: MyColors.darkBlue,
-                                              //         width: double.infinity,
-                                              //         onPressed: (){
+                                              //                     _determinePosition().then((value) {
+                                              //                       LatLng latlong = LatLng(value.latitude, value.longitude);
+                                              //                       http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
+                                              //                         var json = jsonDecode(value.body);
+                                              //                         userAddress = UserAddress(address: json['display_name'], userID: widget.user.id, lat: latlong.latitude, long: latlong.longitude);
+                                              //                         userAddress.upsert().then((value) {
+                                              //                           updateMap((){
+                                              //                             selectedLocation = latlong;
+                                              //                             map.move(selectedLocation, 18);
+                                              //                             address.text = json['display_name'];
+                                              //                           });
+                                              //                         });
                                               //
-                                              //           try{
-                                              //             if(usernamer.text.isEmpty||passwordr.text.isEmpty||firstname.text.isEmpty||lastname.text.isEmpty||email.text.isEmpty)
-                                              //             {
-                                              //               Fluttertoast.showToast(
-                                              //                   msg: "Please fill all the required fields.",
-                                              //                   toastLength: Toast.LENGTH_SHORT,
-                                              //                   gravity: ToastGravity.CENTER,
-                                              //                   timeInSecForIosWeb: 1,
-                                              //                   backgroundColor: Colors.red,
-                                              //                   textColor: Colors.white,
-                                              //                   fontSize: 16.0
-                                              //               );
-                                              //               return;
-                                              //             }
-                                              //             User user = User(username: usernamer.text,password: passwordr.text,firstname: firstname.text,lastname: lastname.text,birthday: "", email: email.text,deviceID: "");
-                                              //             user.isAvailable().then((value) {
-                                              //               if(value) {
-                                              //                 user.upsert();
-                                              //                 Navigator.pop(context);
-                                              //                 Fluttertoast.showToast(
-                                              //                     msg: "Successfully Registered",
-                                              //                     toastLength: Toast.LENGTH_LONG,
-                                              //                     gravity: ToastGravity.CENTER,
-                                              //                     timeInSecForIosWeb: 1,
-                                              //                     backgroundColor: Colors.blue,
-                                              //                     textColor: Colors.white,
-                                              //                     fontSize: 16.0
-                                              //                 );
-                                              //                 return;
-                                              //               }
-                                              //               Fluttertoast.showToast(
-                                              //                   msg: "Username or email is already in used.",
-                                              //                   toastLength: Toast.LENGTH_SHORT,
-                                              //                   gravity: ToastGravity.CENTER,
-                                              //                   timeInSecForIosWeb: 1,
-                                              //                   backgroundColor: Colors.red,
-                                              //                   textColor: Colors.white,
-                                              //                   fontSize: 16.0
-                                              //               );
                                               //
-                                              //             });
+                                              //                       });
+                                              //                     });
+                                              //                   }
+                                              //                   else{
+                                              //                     userAddress = UserAddress.toObject(object: snapshot.data!.docs.first.data());
+                                              //                     address.text = userAddress.address;
+                                              //                   }
+                                              //
+                                              //                   return Container(
+                                              //                     // padding: EdgeInsets.all(20),
+                                              //                     decoration: BoxDecoration(
+                                              //                         color: Colors.white,
+                                              //                         borderRadius: BorderRadius.all(Radius.circular(10))
+                                              //                     ),
+                                              //                     height: 400,
+                                              //                     width: double.infinity,
+                                              //                     child: Column(
+                                              //                       crossAxisAlignment: CrossAxisAlignment.start,
+                                              //                       children: [
+                                              //                         Text("Click on location to select address.",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 10,height: 1),),
+                                              //                         // Padding(padding: EdgeInsets.only(bottom: 20)),
+                                              //                         StatefulBuilder(
+                                              //                             builder: (context,updateMapOnly) {
+                                              //                               _updateMapOnly = updateMapOnly;
+                                              //                               return ClipRRect(
+                                              //                                 borderRadius: BorderRadius.all(Radius.circular(25)),
+                                              //                                 child: SizedBox(
+                                              //                                   width: 500,
+                                              //                                   height: 200,
+                                              //                                   child: FlutterMap(
+                                              //
+                                              //                                     mapController: map,
+                                              //                                     options: MapOptions(
+                                              //                                       onMapReady: (){
+                                              //                                         _updateMapOnly((){
+                                              //                                           selectedLocation = LatLng(userAddress.lat, userAddress.long);
+                                              //                                           map.move(LatLng(userAddress.lat, userAddress.long), 18);
+                                              //                                         });
+                                              //
+                                              //                                       },
+                                              //                                       scrollWheelVelocity: 0.0001,
+                                              //                                       keepAlive: true,
+                                              //                                       onTap: (tap,latlong){
+                                              //                                         http.get(Uri.parse("https://geocode.maps.co/reverse?lat=${latlong.latitude}&lon=${latlong.longitude}")).then((value) {
+                                              //                                           var json = jsonDecode(value.body);
+                                              //                                           _updateMapOnly((){
+                                              //                                             selectedLocation = latlong;
+                                              //                                             map.move(selectedLocation, 18);
+                                              //                                             address.text = json['display_name'];
+                                              //                                           });
+                                              //
+                                              //                                         });
+                                              //                                       },
+                                              //                                       center: selectedLocation,
+                                              //                                       zoom: 15,
+                                              //                                     ),
+                                              //                                     // nonRotatedChildren: [
+                                              //                                     //   AttributionWidget.defaultWidget(
+                                              //                                     //     source: 'OpenStreetMap contributors',
+                                              //                                     //     onSourceTapped: null,
+                                              //                                     //   ),
+                                              //                                     // ],
+                                              //                                     children: [
+                                              //
+                                              //                                       TileLayer(
+                                              //
+                                              //                                         urlTemplate: "https://api.mapbox.com/styles/v1/linoqui14/cldl76aim002v01o4pkskyxyd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsMnRsaG1ndTA1aGsza25vMDRocjE5YXoifQ.RyE1w-7zHamlAuYrOSwO0Q",
+                                              //                                         additionalOptions: {
+                                              //                                           'accessToken':'sk.eyJ1IjoibGlub3F1aTE0IiwiYSI6ImNsZGw3MG5zODI4b3IzcHFwamhjbjZ2NzAifQ.Y_8z_gTuWOYp2Xyf5whNMw',
+                                              //                                           'id': 'mapbox.mapbox-streets-v8'
+                                              //                                         },
+                                              //                                         // userAgentPackageName: 'com.example.app',
+                                              //                                       ),
+                                              //                                       MarkerLayer(
+                                              //                                         markers: [
+                                              //                                           Marker(
+                                              //                                             point: selectedLocation,
+                                              //                                             width: 15,
+                                              //                                             height: 15,
+                                              //                                             builder: (context) => Icon(Icons.place_rounded,color: Colors.blue,),
+                                              //                                           ),
+                                              //                                         ],
+                                              //                                       ),
+                                              //                                     ],
+                                              //                                   ),
+                                              //                                 ),
+                                              //                               );
+                                              //                             }
+                                              //                         ),
+                                              //                         Padding(padding: EdgeInsets.only(top: 10)),
+                                              //                         // Center(child: Text("or",style:  GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),)),
+                                              //                         Padding(padding: EdgeInsets.only(top: 10)),
+                                              //                         CustomTextField(
+                                              //
+                                              //                           icon: Icons.place_outlined,
+                                              //                           enableFloat: false,
+                                              //                           color: Colors.blue,
+                                              //                           hint: "Type address",
+                                              //                           controller: address,
+                                              //                           suffix: CustomTextButton(
+                                              //                             style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.blue,fontSize: 15,height: 1),
+                                              //                             color: Colors.transparent,
+                                              //                             onPressed: (){
+                                              //                               http.get(Uri.parse("https://geocode.maps.co/search?q=${address.text}")).then((value) {
+                                              //                                 var json = jsonDecode(value.body);
+                                              //                                 // 1128 kauswagan cagayan de Oro city
+                                              //                                 double lat = double.parse(json.first['lat']);
+                                              //                                 double long = double.parse(json.first['lon']);
+                                              //                                 selectedLocation = LatLng(lat, long);
+                                              //                                 _updateMapOnly((){
+                                              //                                   selectedLocation = LatLng(lat, long);
+                                              //                                   map.move(selectedLocation, 18);
+                                              //                                 });
+                                              //
+                                              //                               });
+                                              //                             },
+                                              //                             rTopLeft: 0,
+                                              //                             rBottomLeft: 0,
+                                              //                             height: 50,
+                                              //                             width: 50,
+                                              //                             text: "Find",
+                                              //                           ),
+                                              //                         ),
+                                              //                         Row(
+                                              //                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              //                           children: [
+                                              //                             CustomTextButton(
+                                              //                               width:120,
+                                              //                               onPressed: (){
+                                              //                                 if(address.text.isEmpty)return;
+                                              //
+                                              //                                 userAddress.address = address.text;
+                                              //                                 userAddress.lat = selectedLocation.latitude;
+                                              //                                 userAddress.long = selectedLocation.longitude;
+                                              //
+                                              //                                 userAddress.upsert().then((value) {
+                                              //                                   Fluttertoast.showToast(
+                                              //                                       msg: "Location update successfully!",
+                                              //                                       toastLength: Toast.LENGTH_SHORT,
+                                              //                                       gravity: ToastGravity.CENTER,
+                                              //                                       timeInSecForIosWeb: 1,
+                                              //                                       backgroundColor: Colors.blue,
+                                              //                                       textColor: Colors.white,
+                                              //                                       fontSize: 16.0
+                                              //                                   );
+                                              //                                   _updateMapOnly((){
+                                              //
+                                              //                                   });
+                                              //                                 });
+                                              //
+                                              //                                 // setState(() {
+                                              //                                 //   stationAddress.text = address.text.toTitleCase();
+                                              //                                 //   Navigator.pop(context);
+                                              //                                 // });
+                                              //                               },
+                                              //                               color: Colors.blue,
+                                              //                               text: "Save Location",
+                                              //                             ),
+                                              //                             CustomTextButton(
+                                              //                               padding: EdgeInsets.zero,
+                                              //                               style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),
+                                              //                               onPressed: (){
+                                              //                                 // Navigator.pop(context);
+                                              //                               },
+                                              //                               color: Colors.transparent,
+                                              //                               text: "",
+                                              //                             ),
+                                              //                           ],
+                                              //                         )
+                                              //
+                                              //                       ],
+                                              //                     ),
+                                              //                   );
+                                              //                 }
+                                              //             );
                                               //           }
-                                              //           catch(e){
-                                              //             print("ERROR");
-                                              //           }
-                                              //
-                                              //
-                                              //
-                                              //         },
-                                              //       ),
-                                              //     ),
-                                              //     Expanded(
-                                              //       child: CustomTextButton(
-                                              //         padding: EdgeInsets.zero,
-                                              //         style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.normal,color:Colors.grey,fontSize: 15,height: 1),
-                                              //         onPressed: (){
-                                              //           Navigator.pop(context);
-                                              //         },
-                                              //         color: Colors.transparent,
-                                              //         text: "Cancel",
-                                              //       ),
-                                              //     ),
-                                              //   ],
-                                              // )
+                                              //       );
+                                              //     }
+                                              // ),
+
                                             ],
                                           ),
                                         ),
@@ -1366,7 +1559,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                             for(var station in stations){
                                                                               Controller.getCollectionWhere(collectionName: 'user_addresses', field: 'userID', value: widget.user.id).then((value) {
                                                                                 UserAddress userAddress = UserAddress.toObject(object: value.docs.first.data());
-                                                                                OrderDetails order = OrderDetails(lat: userAddress.lat,long: userAddress.long,userAddress: userAddress.address,stationID: station,orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: 0, totalPrice: 0, status: OrderStatus.PENDING,riderID: "");
+                                                                                OrderDetail order = OrderDetail(lat: userAddress.lat,long: userAddress.long,userAddress: userAddress.address,stationID: station,orderType: isPickup?OrderType.PICKUP:OrderType.DELIVERY,paymentType: isCOD?PaymentType.COD:PaymentType.ATSTATION, userID: widget.user.id, totalItems: 0, totalPrice: 0, status: OrderStatus.PENDING,riderID: "", timeCheckOut: DateTime.now().toString());
                                                                                 int items = 0;
                                                                                 int totalValue = 0;
                                                                                 for(var cart in cartItems.where((element) => element.stationID==station)){
@@ -1444,21 +1637,52 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                     builder: (context, snapshot) {
                                       if(!snapshot.hasData)return Center();
                                       if(snapshot.connectionState==ConnectionState.waiting)return Center();
-                                      if(snapshot.data!.docs.isEmpty)return Center();
-                                      List<OrderDetails> orderDetails = [];
+                                      if(snapshot.data!.docs.isEmpty) {
+                                        return Container(
+                                            height: 300,
+                                            alignment: Alignment.center,
+
+                                            child:SingleChildScrollView(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  lot.Lottie.network("https://assets2.lottiefiles.com/packages/lf20_qh5z2fdq.json",width: 200),
+                                                  Text("You dont have any orders",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                                ],
+                                              ),
+                                            )
+                                        );
+                                      }
+                                      List<OrderDetail> orderDetails = [];
                                       for(var query in snapshot.data!.docs){
-                                        OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                        OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                         if(orderDetail.status==OrderStatus.DELIVERED)continue;
                                         orderDetails.add(orderDetail);
                                         // print(query.data());
                                       }
+                                      if(orderDetails.isEmpty){
+                                        return Container(
+                                            height: 300,
+                                            alignment: Alignment.center,
 
+                                            child:SingleChildScrollView(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  lot.Lottie.network("https://assets2.lottiefiles.com/packages/lf20_qh5z2fdq.json",width: 200),
+                                                  Text("You dont have any orders",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 12,height: 1,color: Colors.grey ,),),
+                                                ],
+                                              ),
+                                            )
+                                        );
+                                      }
                                       return Container(
                                         height: Tools.getDeviceHeight(context)*.635,
                                         padding: EdgeInsets.all(10),
                                         width: Tools.getDeviceWidth(context),
                                         child: ListView(
                                           children: orderDetails.map((order) {
+
                                             return Container(
                                               alignment: Alignment.topCenter,
                                               margin: EdgeInsets.all(10),
@@ -1795,9 +2019,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                         if(!snapshot.hasData)return Center();
                                         if(snapshot.connectionState==ConnectionState.waiting)return Center();
                                         if(snapshot.data!.docs.isEmpty)return Center();
-                                        List<OrderDetails> orderDetails = [];
+                                        List<OrderDetail> orderDetails = [];
                                         for(var query in snapshot.data!.docs){
-                                          OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                          OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                           if(orderDetail.status!=OrderStatus.DELIVERED)continue;
                                           orderDetails.add(orderDetail);
                                           // print(query.data());
@@ -2024,9 +2248,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                     if(snapshot.data!.docs.isEmpty)return Center();
                                     int totalSold = 0;
                                     int totalValueSold = 0;
-                                    List<OrderDetails> orderDetails = [];
+                                    List<OrderDetail> orderDetails = [];
                                     for(var query in snapshot.data!.docs){
-                                      OrderDetails orderDetail = OrderDetails.toObject(object: query.data());
+                                      OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
                                       if(orderDetail.status!=OrderStatus.DELIVERED)continue;
                                       if(orderDetail.orderType!=OrderType.DELIVERY)continue;
                                       totalSold+=orderDetail.totalItems;
@@ -2084,9 +2308,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
             height: 50,
             child: Builder(
                 builder: (context) {
-                  int selectedIndex = 0;
+
                   return StatefulBuilder(
                       builder: (context,updateNavigation) {
+                        _updateNavigation = updateNavigation;
                         return TabBar(
                           isScrollable: false,
                           indicatorColor: Colors.transparent,
@@ -2094,23 +2319,23 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                           splashBorderRadius: BorderRadius.zero,
                           onTap: (value){
                             updateNavigation((){
-                              selectedIndex = value;
+                              tabController.index = value;
                             });
 
                           },
                           controller: tabController,
                           tabs: [
                             Tab(
-                              icon:  Icon(Icons.storefront,color: selectedIndex==0?Colors.blue:Colors.grey,),
+                              icon:  Icon(Icons.storefront,color: tabController.index ==0?Colors.blue:Colors.grey,),
                             ),
                             Tab(
-                              icon:  Icon(Ionicons.basket_outline,color: selectedIndex==1?Colors.blue:Colors.grey,),
+                              icon:  Icon(Ionicons.basket_outline,color: tabController.index ==1?Colors.blue:Colors.grey,),
                             ),
                             Tab(
-                              icon: Icon(Icons.local_shipping,color: selectedIndex==2?Colors.blue:Colors.grey,),
+                              icon: Icon(Icons.local_shipping,color: tabController.index ==2?Colors.blue:Colors.grey,),
                             ),
                             Tab(
-                              icon: Icon(Icons.receipt_long_outlined,color: selectedIndex==3?Colors.blue:Colors.grey,),
+                              icon: Icon(Icons.receipt_long_outlined,color: tabController.index ==3?Colors.blue:Colors.grey,),
                             ),
                           ],
                         );

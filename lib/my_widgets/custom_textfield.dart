@@ -1,6 +1,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../tools/variables.dart';
 
@@ -29,7 +30,9 @@ class CustomTextField extends StatefulWidget{
     this.rAll,
     this.filledColor,
     this.borderWidth = 1,
-    this.enableFloat = false
+    this.enableFloat = false,
+    this.minLines = 1,
+    this.style = const TextStyle(color: Colors.black54)
   }) : super(key: key);
 
   final String hint;
@@ -53,6 +56,8 @@ class CustomTextField extends StatefulWidget{
   double borderWidth;
   TextEditingController controller;
   TextAlign? alignment;
+  int minLines;
+  TextStyle style;
 
 
   @override
@@ -72,20 +77,17 @@ class _CustomTextFieldState extends State<CustomTextField>{
     return Padding(
       padding: widget.padding,
       child: TextField(
+        inputFormatters: widget.keyBoardType==TextInputType.number?<TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]:<TextInputFormatter>[],
         textAlign: widget.alignment!=null?widget.alignment!:TextAlign.start,
         keyboardType: widget.keyBoardType!=null?widget.keyBoardType!:TextInputType.text,
-        minLines: 1,
-        maxLines: widget.obscureText?1:3,
+        minLines: widget.minLines,
+        maxLines: widget.obscureText?1:widget.minLines>3?widget.minLines+2:3,
         readOnly: widget.readonly,
         enabled:widget.enable,
         controller: widget.controller,
         obscureText:widget.obscureText?!showObscureText:showObscureText ,
         onChanged: widget.onChange,
-        style: TextStyle(
-
-          color: widget.color.withAlpha(widget.enable?255:200),
-
-        ),
+        style: widget.style,
         decoration: InputDecoration(
             fillColor: widget.filledColor,
 

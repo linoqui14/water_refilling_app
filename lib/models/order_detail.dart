@@ -23,11 +23,12 @@ class PaymentType{
 }
 
 
-class OrderDetails extends Controller{
-  String orderType,paymentType,userID,status,stationID,riderID,userAddress;
+class OrderDetail extends Controller{
+  String orderType,paymentType,userID,status,stationID,riderID,userAddress,timeCheckOut,timeDelivered;
+  bool isNotified;
   int totalPrice,totalItems;
   double lat,long;
-  OrderDetails(
+  OrderDetail(
       {
         required this.orderType,
         required this.paymentType,
@@ -40,6 +41,9 @@ class OrderDetails extends Controller{
         required this.userAddress,
         required this.lat,
         required this.long,
+        required this.timeCheckOut,
+        this.timeDelivered = "",
+        this.isNotified = false,
       }):super(collectionName: 'orders',id: Controller.genID(11));
 
   @override
@@ -57,11 +61,14 @@ class OrderDetails extends Controller{
       'userAddress':userAddress,
       'lat':lat,
       'long':long,
+      'timeDelivered':timeDelivered,
+      'isNotified':isNotified,
+      'timeCheckOut':timeCheckOut,
     };
   }
 
-  static OrderDetails toObject({required Map<String, dynamic> object}){
-    OrderDetails order =  OrderDetails(
+  static OrderDetail toObject({required Map<String, dynamic> object}){
+    OrderDetail order =  OrderDetail(
       userID: object['userID'],
       orderType: object['orderType'],
       paymentType: object['paymentType'],
@@ -73,6 +80,9 @@ class OrderDetails extends Controller{
       userAddress: object['userAddress'],
       lat: object['lat'],
       long: object['long'],
+      isNotified: object['isNotified'],
+      timeCheckOut: object['timeCheckOut'],
+      timeDelivered: object['timeDelivered'],
     );
     order.id = object['id'];
     return order;
