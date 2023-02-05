@@ -18,6 +18,9 @@ abstract class Controller {
   Future<void> upsert() async{
     _db.collection(collectionName).doc(id).set(toJson());
   }
+  Future<void> delete() async{
+    _db.collection(collectionName).doc(id).delete();
+  }
 
 
 

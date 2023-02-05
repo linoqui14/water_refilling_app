@@ -1656,10 +1656,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                       List<OrderDetail> orderDetails = [];
                                       for(var query in snapshot.data!.docs){
                                         OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
-                                        if(orderDetail.status==OrderStatus.DELIVERED)continue;
+                                        if(orderDetail.status==OrderStatus.DELIVERED||orderDetail.status==OrderStatus.COMPLETE)continue;
                                         orderDetails.add(orderDetail);
                                         // print(query.data());
                                       }
+
                                       if(orderDetails.isEmpty){
                                         return Container(
                                             height: 300,
@@ -1676,6 +1677,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                             )
                                         );
                                       }
+                                      orderDetails.sort((b,a)=>DateTime.parse(a.timeDelivered).compareTo(DateTime.parse(b.timeDelivered)));
                                       return Container(
                                         height: Tools.getDeviceHeight(context)*.635,
                                         padding: EdgeInsets.all(10),
@@ -1777,12 +1779,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                     Text("Pending",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
                                                                   ],
                                                                 ),
+                                                                if(order.orderType!=OrderType.PICKUP)
                                                                 Expanded(child: Column(
                                                                   children: [
                                                                     Divider(thickness: 3,color: Colors.transparent,),
                                                                     Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
                                                                   ],
                                                                 )),
+                                                                if(order.orderType!=OrderType.PICKUP)
                                                                 Column(
                                                                   children: [
                                                                     Container(
@@ -1804,12 +1808,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                     Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
                                                                   ],
                                                                 ),
+                                                                if(order.orderType!=OrderType.PICKUP)
                                                                 Expanded(child: Column(
                                                                   children: [
                                                                     Divider(thickness: 3,color: Colors.transparent,),
                                                                     Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
                                                                   ],
                                                                 )),
+                                                                if(order.orderType!=OrderType.PICKUP)
                                                                 Column(
                                                                   children: [
                                                                     Container(
@@ -1841,8 +1847,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                   children: [
                                                                     Container(
                                                                       padding: EdgeInsets.all(5),
-                                                                      height:order.status==OrderStatus.DELIVERED?30:15,
-                                                                      width: order.status==OrderStatus.DELIVERED?30:15,
+                                                                      height:order.status==OrderStatus.DELIVERED||order.status==OrderStatus.COMPLETE?30:15,
+                                                                      width: order.status==OrderStatus.DELIVERED||order.status==OrderStatus.COMPLETE?30:15,
                                                                       decoration: BoxDecoration(
                                                                           color: Colors.blue,
                                                                           shape: BoxShape.circle
@@ -1855,7 +1861,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                                                       ),
                                                                     ),
-                                                                    Text("Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                    Text(order.orderType==OrderType.PICKUP?"Complete":"Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
                                                                   ],
                                                                 ),
                                                               ],
@@ -1893,7 +1899,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                           // padding: EdgeInsets.all(10),
                                                           margin: EdgeInsets.only(top: 10),
                                                           width: double.infinity,
-                                                          height: 290,
+                                                          height: 250,
 
                                                           child: ClipRRect(
                                                             borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -1977,6 +1983,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                         );
                                                       }
                                                   ),
+
                                                   Row(
                                                     crossAxisAlignment: CrossAxisAlignment.center,
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1984,7 +1991,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                       Text("Total Price",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 18,color: Colors.grey ,)),
                                                       Text("Php."+order.totalPrice.toString(),style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.bold,fontSize: 18,color: Colors.orange ,)),
                                                     ],
-                                                  )
+                                                  ),
+                                                  if(order.status==OrderStatus.PENDING)
+                                                  CustomTextButton(
+                                                    width:50,
+                                                    padding: EdgeInsets.zero,
+                                                    style:GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 13,color: Colors.grey ,),
+                                                    color: Colors.transparent,
+                                                    text:'Cancel',
+                                                    onPressed: (){
+                                                      order.delete();
+                                                    },
+                                                  ),
 
 
                                                 ],
@@ -2022,11 +2040,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                         List<OrderDetail> orderDetails = [];
                                         for(var query in snapshot.data!.docs){
                                           OrderDetail orderDetail = OrderDetail.toObject(object: query.data());
-                                          if(orderDetail.status!=OrderStatus.DELIVERED)continue;
-                                          orderDetails.add(orderDetail);
+                                          if(orderDetail.status==OrderStatus.DELIVERED||orderDetail.status==OrderStatus.COMPLETE){
+                                            orderDetails.add(orderDetail);
+                                          }
+
                                           // print(query.data());
                                         }
-
+                                        orderDetails.sort((b,a)=>DateTime.parse(a.timeDelivered).compareTo(DateTime.parse(b.timeDelivered)));
                                         return Container(
                                           height: Tools.getDeviceHeight(context)*.560,
                                           padding: EdgeInsets.all(10),
@@ -2127,6 +2147,64 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                       Text("Pending",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
                                                                     ],
                                                                   ),
+                                                                  if(order.orderType!=OrderType.PICKUP)
+                                                                    Expanded(child: Column(
+                                                                      children: [
+                                                                        Divider(thickness: 3,color: Colors.transparent,),
+                                                                        Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                      ],
+                                                                    )),
+                                                                  if(order.orderType!=OrderType.PICKUP)
+                                                                    Column(
+                                                                      children: [
+                                                                        Container(
+                                                                          padding: EdgeInsets.all(5),
+                                                                          height:order.status==OrderStatus.ACCEPTED?30:15,
+                                                                          width: order.status==OrderStatus.ACCEPTED?30:15,
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.blue,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+                                                                          child: Container(
+                                                                            decoration: BoxDecoration(
+                                                                                color: Colors.white,
+                                                                                shape: BoxShape.circle
+                                                                            ),
+
+                                                                          ),
+                                                                        ),
+                                                                        Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                      ],
+                                                                    ),
+                                                                  if(order.orderType!=OrderType.PICKUP)
+                                                                    Expanded(child: Column(
+                                                                      children: [
+                                                                        Divider(thickness: 3,color: Colors.transparent,),
+                                                                        Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
+                                                                      ],
+                                                                    )),
+                                                                  if(order.orderType!=OrderType.PICKUP)
+                                                                    Column(
+                                                                      children: [
+                                                                        Container(
+                                                                          padding: EdgeInsets.all(5),
+                                                                          height:order.status==OrderStatus.DELIVERING?30:15,
+                                                                          width: order.status==OrderStatus.DELIVERING?30:15,
+                                                                          decoration: BoxDecoration(
+                                                                              color: Colors.blue,
+                                                                              shape: BoxShape.circle
+                                                                          ),
+                                                                          child: Container(
+                                                                            decoration: BoxDecoration(
+                                                                                color: Colors.white,
+                                                                                shape: BoxShape.circle
+                                                                            ),
+
+                                                                          ),
+                                                                        ),
+                                                                        Text("Delivering",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                      ],
+                                                                    ),
                                                                   Expanded(child: Column(
                                                                     children: [
                                                                       Divider(thickness: 3,color: Colors.transparent,),
@@ -2137,8 +2215,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
                                                                     children: [
                                                                       Container(
                                                                         padding: EdgeInsets.all(5),
-                                                                        height:order.status==OrderStatus.ACCEPTED?30:15,
-                                                                        width: order.status==OrderStatus.ACCEPTED?30:15,
+                                                                        height:order.status==OrderStatus.DELIVERED||order.status==OrderStatus.COMPLETE?30:15,
+                                                                        width: order.status==OrderStatus.DELIVERED||order.status==OrderStatus.COMPLETE?30:15,
                                                                         decoration: BoxDecoration(
                                                                             color: Colors.blue,
                                                                             shape: BoxShape.circle
@@ -2151,61 +2229,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
 
                                                                         ),
                                                                       ),
-                                                                      Text("Accepted",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
-                                                                    ],
-                                                                  ),
-                                                                  Expanded(child: Column(
-                                                                    children: [
-                                                                      Divider(thickness: 3,color: Colors.transparent,),
-                                                                      Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
-                                                                    ],
-                                                                  )),
-                                                                  Column(
-                                                                    children: [
-                                                                      Container(
-                                                                        padding: EdgeInsets.all(5),
-                                                                        height:order.status==OrderStatus.DELIVERING?30:15,
-                                                                        width: order.status==OrderStatus.DELIVERING?30:15,
-                                                                        decoration: BoxDecoration(
-                                                                            color: Colors.blue,
-                                                                            shape: BoxShape.circle
-                                                                        ),
-                                                                        child: Container(
-                                                                          decoration: BoxDecoration(
-                                                                              color: Colors.white,
-                                                                              shape: BoxShape.circle
-                                                                          ),
-
-                                                                        ),
-                                                                      ),
-                                                                      Text("Delivering",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
-                                                                    ],
-                                                                  ),
-                                                                  Expanded(child: Column(
-                                                                    children: [
-                                                                      Divider(thickness: 3,color: Colors.transparent,),
-                                                                      Text("",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.transparent ,)),
-                                                                    ],
-                                                                  )),
-                                                                  Column(
-                                                                    children: [
-                                                                      Container(
-                                                                        padding: EdgeInsets.all(5),
-                                                                        height:order.status==OrderStatus.DELIVERED?30:15,
-                                                                        width: order.status==OrderStatus.DELIVERED?30:15,
-                                                                        decoration: BoxDecoration(
-                                                                            color: Colors.blue,
-                                                                            shape: BoxShape.circle
-                                                                        ),
-                                                                        child: Container(
-                                                                          decoration: BoxDecoration(
-                                                                              color: Colors.white,
-                                                                              shape: BoxShape.circle
-                                                                          ),
-
-                                                                        ),
-                                                                      ),
-                                                                      Text("Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
+                                                                      Text(order.orderType==OrderType.PICKUP?"Complete":"Delivered",style: GoogleFonts.notoSansNKo(fontWeight: FontWeight.w100,fontSize: 8,color: Colors.grey ,)),
                                                                     ],
                                                                   ),
                                                                 ],
